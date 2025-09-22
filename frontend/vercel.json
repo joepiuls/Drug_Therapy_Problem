@@ -2,5 +2,11 @@
   "routes": [
     { "handle": "filesystem" },
     { "src": "/.*", "dest": "/index.html" }
+  ],
+
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "http://63.141.255.64:3002/api/:path*" }
   ]
+
+
 }
