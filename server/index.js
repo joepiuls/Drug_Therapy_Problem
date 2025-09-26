@@ -27,9 +27,9 @@ app.use('/api/', limiter);
 
 // CORS configuration
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? ['https://your-domain.com'] 
-    : ['http://localhost:5173', 'http://localhost:3000'],
+  origin: process.env.NODE_ENV === 'production'
+    ? ['https://ogunmedreport.com']
+    : ['http://localhost:3000', 'http://localhost:5173'],
   credentials: true
 }));
 
