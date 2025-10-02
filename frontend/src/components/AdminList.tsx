@@ -1,12 +1,11 @@
 import React, { useEffect } from "react";
 import {Check, Trash2 } from "lucide-react";
-import {Table, Button, Space, Popconfirm} from "antd";
+import {Table, Button, Space, Popconfirm, Tooltip} from "antd";
 import type { User } from "../types";
 import { useUserStore } from "../stores/usersStore";
 import { useAuth } from "../contexts/AuthContext";
 import { LoadingSpinner } from "./LoadingSpinner";
 import type { ColumnsType } from "antd/es/table";
-import { Tooltip } from "antd";
 
 
 
