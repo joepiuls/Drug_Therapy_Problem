@@ -8,4 +8,9 @@ export default defineConfig({
     include: ['antd'],
     exclude: ['lucide-react'],
   },
+
+  ssr: {
+    // ensure antd is included in SSR bundle (useful on Vercel or other server builds)
+    noExternal: ['antd', 'rc-field-form', 'rc-util'] 
+  }
 });
