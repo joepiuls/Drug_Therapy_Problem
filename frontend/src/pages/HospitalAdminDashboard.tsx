@@ -7,10 +7,12 @@ import { Select } from '../components/Select';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { useToast } from '../components/Toast';
 import { Download, Filter, FileText, TrendingUp, AlertTriangle, Users } from 'lucide-react';
-import type { DTPReport } from '../types';
 import { format } from 'date-fns';
 import { dtpCategories, severityLevels } from '../data/hospitals';
 import fileDownload from 'js-file-download';
+import { InputPopUp } from '../components/InputPopUp';
+import { UserList } from '../components/UserList';
+
 
 export const HospitalAdminDashboard: React.FC = () => {
   const { user, token } = useAuth();
@@ -19,14 +21,16 @@ export const HospitalAdminDashboard: React.FC = () => {
     loading, 
     filters, 
     setFilters, 
-    fetchReports 
+    fetchReports,
+    addFeedback
   } = useReportStore();
   const { addToast, ToastContainer } = useToast();
   const [showFilters, setShowFilters] = useState(false);
+  const [isInputPopUpOpen, setIsInputPopUpOpen] = useState(false);
 
-  useEffect(() => {
+  useEffect( () => {
     if (token) {
-      fetchReports(token);
+     fetchReports(token);
     }
   }, [token, filters]);
 
@@ -105,6 +109,7 @@ export const HospitalAdminDashboard: React.FC = () => {
   return (
     <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
       <ToastContainer />
+      
       
       {/* Header */}
       <div className="mb-8">
@@ -268,7 +273,7 @@ export const HospitalAdminDashboard: React.FC = () => {
         ) : (
           <div className="divide-y divide-gray-200">
             {filteredReports.map((report) => (
-              <div key={report.id} className="p-6 hover:bg-gray-50 transition-colors">
+              <div key={report._id} className="p-6 hover:bg-gray-50 transition-colors">
                 <div className="flex items-center justify-between mb-3">
                   <div>
                     <h3 className="text-lg font-medium text-gray-900">
@@ -315,18 +320,41 @@ export const HospitalAdminDashboard: React.FC = () => {
                 )}
 
                 <div className="flex justify-end space-x-2">
-                  <Button variant="outline" size="sm">
+                  <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={setIsInputPopUpOpen.bind(this, true)}
+                  disabled={report.status === 'resolved' || report.status === 'reviewed'}
+                  >
                     Add Feedback
                   </Button>
-                  <Button variant="secondary" size="sm">
-                    Mark as Reviewed
+                  <Button 
+                  variant="secondary" 
+                  size="sm"
+                  disabled={report.status === 'resolved' || report.status === 'reviewed'}
+                  onClick={()=>{
+                    addFeedback(report._id, 'reviewed', report.feedback || '', token || '');
+                  }}
+                  >
+                    { report.status === 'reviewed' ? 'Reviewed' : 'Mark as Reviewed'}
                   </Button>
+                  <InputPopUp
+                    open={isInputPopUpOpen}
+                    onCancel={() => setIsInputPopUpOpen(false)}
+                    reportId={report._id}
+                    token={token || ''}
+                  />
                 </div>
               </div>
             ))}
           </div>
         )}
+
+      {/* UserList */}
+      <div className="mt-8">
+        <UserList />
       </div>
+    </div>
     </div>
   );
 };

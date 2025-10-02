@@ -14,7 +14,9 @@
   "dependencies": {
     "@headlessui/react": "^2.2.7",
     "@hookform/resolvers": "^5.2.1",
+    "@imagekit/react": "^5.0.1",
     "@types/react-router-dom": "^5.3.3",
+    "axios": "^1.12.2",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "html2canvas": "^1.4.1",

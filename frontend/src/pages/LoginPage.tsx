@@ -6,6 +6,7 @@ import { useToast } from '../components/Toast';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { Guitar as Hospital, Mail, Lock, UserPlus } from 'lucide-react';
+import { Label } from 'recharts';
 
 export const LoginPage: React.FC = () => {
   const { user, login, loading } = useAuth();
@@ -60,8 +61,12 @@ export const LoginPage: React.FC = () => {
       
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="flex justify-center">
-          <div className="w-16 h-16 bg-primary-600 rounded-full flex items-center justify-center">
-            <Hospital className="w-8 h-8 text-white" />
+          <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center">
+            <img
+              src="https://ik.imagekit.io/2mkt1hyrh/Ogun_State_logo.png?updatedAt=1758989862625"
+              alt="Logo"
+              className="w-20 h-25"
+            />
           </div>
         </div>
         
@@ -167,6 +172,7 @@ export const LoginPage: React.FC = () => {
   );
 };
 
+
 const RegisterForm: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const { register, loading } = useAuth();
   const { hospitals } = useHospitalStore();
@@ -177,6 +183,7 @@ const RegisterForm: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     password: '',
     confirmPassword: '',
     hospital: '',
+    role:'',
     registrationNumber: ''
   });
 
@@ -184,6 +191,9 @@ const RegisterForm: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     { value: '', label: 'Select Hospital' },
     ...hospitals.map(h => ({ value: h.name, label: h.name }))
   ];
+
+  const roleOptions = ['Select Role', 'pharmacist' , 'hospital_admin', 'nafdac_admin'];
+  
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -202,6 +212,7 @@ const RegisterForm: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       name: form.name,
       email: form.email,
       password: form.password,
+      role: form.role,
       hospital: form.hospital,
       registrationNumber: form.registrationNumber
     });
@@ -218,7 +229,7 @@ const RegisterForm: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     <>
       <div className="text-center mb-6">
         <h2 className="text-2xl font-bold text-gray-900">Register</h2>
-        <p className="text-sm text-gray-600 mt-2">Create your pharmacist account</p>
+        <p className="text-sm text-gray-600 mt-2">Create your professional account</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -226,7 +237,7 @@ const RegisterForm: React.FC<{ onBack: () => void }> = ({ onBack }) => {
           label="Full Name"
           value={form.name}
           onChange={(e) => setForm(prev => ({ ...prev, name: e.target.value }))}
-          placeholder="Dr. John Doe"
+          placeholder="Pharm. John Doe"
           required
         />
 
@@ -258,6 +269,23 @@ const RegisterForm: React.FC<{ onBack: () => void }> = ({ onBack }) => {
             required
           />
         </div>
+
+        <select
+          className="w-full rounded-lg border border-gray-300 px-3 py-3 text-base focus:outline-none focus:ring-2 focus:ring-primary-500"
+          value={form.role}
+          onChange={(e) => setForm(prev => ({ ...prev, role: e.target.value }))}
+          required
+        >
+            {roleOptions.map((option, index) => (
+            <option
+              key={index}
+              value={index === 0 ? '' : option}
+              disabled={index === 0}
+            >
+              {option}
+            </option>
+            ))}
+        </select>
 
         <select
           className="w-full rounded-lg border border-gray-300 px-3 py-3 text-base focus:outline-none focus:ring-2 focus:ring-primary-500"

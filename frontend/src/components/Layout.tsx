@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { LogOut, Menu, X, Guitar as Hospital, User, BarChart3 } from 'lucide-react';
+import { LogOut, Menu, X, Guitar as Hospital, User } from 'lucide-react';
 import { useState } from 'react';
 
 interface LayoutProps {
@@ -14,7 +14,8 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const roleDisplayNames = {
     pharmacist: 'Pharmacist',
     hospital_admin: 'Hospital Admin',
-    state_admin: 'State Admin'
+    state_admin: 'State Admin',
+    nafdac_admin: 'Nafdac Admin'
   };
 
   const handleLogout = () => {

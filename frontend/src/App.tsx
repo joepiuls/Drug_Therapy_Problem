@@ -7,6 +7,7 @@ import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { ReportPage } from './pages/ReportPage';
 import { UserGuidePage } from './pages/UserGuidePage';
+import Footer from './components/Footer';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, loading } = useAuth();
@@ -43,6 +44,7 @@ const AppRoutes: React.FC = () => {
       } />
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
+
     </Routes>
   );
 };
@@ -51,9 +53,10 @@ function App() {
   return (
     <AuthProvider>
       <Router>
-        <div className="min-h-screen bg-background">
+        <div className="bg-background pt-0 min-h-screen pb-14">
           <AppRoutes />
         </div>
+        <Footer />
       </Router>
     </AuthProvider>
   );

@@ -14,7 +14,7 @@ export const PharmacistDashboard: React.FC = () => {
 
   useEffect(() => {
     if (token) {
-      fetchReports(token);
+      fetchReports(token);     
     }
   }, [token]);
 
@@ -156,7 +156,7 @@ export const PharmacistDashboard: React.FC = () => {
         ) : (
           <div className="divide-y divide-gray-200">
             {reports.map((report) => (
-              <div key={report.id} className="p-6 hover:bg-gray-50 transition-colors">
+              <div key={report._id} className="p-6 hover:bg-gray-50 transition-colors">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center space-x-3">
                     {getStatusIcon(report.status)}

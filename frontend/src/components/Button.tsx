@@ -1,12 +1,12 @@
 import React from 'react';
 import { LoadingSpinner } from './LoadingSpinner';
-import { DivideIcon as LucideIcon } from 'lucide-react';
+import { DivideIcon as  LucideIcon } from 'lucide-react';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'outline' | 'danger';
   size?: 'sm' | 'md' | 'lg';
   loading?: boolean;
-  icon?: LucideIcon;
+  icon?: typeof LucideIcon;
   fullWidth?: boolean;
 }
 

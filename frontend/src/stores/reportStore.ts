@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import type { DTPReport } from '../types';
+import api from '../../utils/api';
+import { data } from 'react-router-dom';
 
 interface ReportState {
   reports: DTPReport[];
@@ -23,10 +25,12 @@ interface ReportState {
   setPagination: (pagination: any) => void;
   fetchReports: (token: string) => Promise<void>;
   submitReport: (reportData: any, token: string) => Promise<boolean>;
-  updateReport: (id: string, updates: any, token: string) => Promise<boolean>;
+  addFeedback: (id:string, status: string, feedback: string, token: string) => Promise<boolean>;
+  markReportAsResolved: (reportId: string, token: string) => Promise<boolean>;
+  updateReport: (reportId: string, updates: any, token: string) => Promise<boolean>;
 }
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
 
 export const useReportStore = create<ReportState>((set, get) => ({
   reports: [],
@@ -55,14 +59,15 @@ export const useReportStore = create<ReportState>((set, get) => ({
       
       queryParams.append('page', pagination.current.toString());
 
-      const response = await fetch(`${API_URL}/reports?${queryParams}`, {
+      const response = await api.get(`/reports?${queryParams.toString()}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
       });
 
-      if (response.ok) {
-        const data = await response.json();
+      if (response.status === 200 || response.status === 201) {
+        const data = await response.data;
+
         set({ 
           reports: data.reports,
           pagination: data.pagination,
@@ -77,39 +82,39 @@ export const useReportStore = create<ReportState>((set, get) => ({
     }
   },
 
-  submitReport: async (reportData: any, token: string) => {
-    try {
-      const formData = new FormData();
-      
-      Object.entries(reportData).forEach(([key, value]) => {
-        if (key === 'photos' && Array.isArray(value)) {
-          value.forEach((file: File) => {
-            formData.append('photos', file);
-          });
-        } else if (value !== null && value !== undefined) {
-          formData.append(key, value as string);
-        }
-      });
+ submitReport: async (reportData: any, token: string) => {
+  try {
+    const formData = new FormData();
 
-      const response = await fetch(`${API_URL}/reports`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-        body: formData,
-      });
+    Object.entries(reportData).forEach(([key, value]) => {
+      if (key === "photos" && Array.isArray(value)) {
+        value.forEach((file: File) => formData.append("photos", file));
+      } else if (value !== null && value !== undefined) {
+        formData.append(key, String(value));
+      }
+    });
 
-      return response.ok;
-    } catch (error) {
-      console.error('Submit report error:', error);
-      return false;
-    }
-  },
+    const response = await api.post("/reports", formData, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    const data = await response.data;
+    set({
+      reports: data.reports,
+      pagination: data.pagination,
+      loading: false
+    });
+    return response.status === 200 || response.status === 201;
+  } catch (error) {
+    console.error("Submit report error:", error);
+    return false;
+  }
+},
 
   updateReport: async (id: string, updates: any, token: string) => {
     try {
-      const response = await fetch(`${API_URL}/reports/${id}`, {
-        method: 'PATCH',
+      const response = await api.patch(`/reports/${id}`, {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
@@ -117,7 +122,7 @@ export const useReportStore = create<ReportState>((set, get) => ({
         body: JSON.stringify(updates),
       });
 
-      if (response.ok) {
+      if (response.status === 200 || response.status === 201) {
         // Refresh reports after update
         await get().fetchReports(token);
         return true;
@@ -128,4 +133,41 @@ export const useReportStore = create<ReportState>((set, get) => ({
       return false;
     }
   },
+
+  markReportAsResolved: async (reportId: string, token: string) => {
+    try {
+      const response = await api.post(`/reports/${reportId}/resolve`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.status === 200 || response.status === 201) {
+        // Refresh reports after marking as resolved
+        await get().fetchReports(token);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Mark report as resolved error:', error);
+      return false;
+    }
+  },
+
+  addFeedback: async (reportId: string, status: string, feedback: string | '', token: string) => {
+    try {
+      const response = await api.patch(`/reports/${reportId}`, { status, feedback });
+
+      if (response.status === 200 || response.status === 201) {
+        // Refresh reports after adding feedback
+        await get().fetchReports(token);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Add feedback error:', error);
+      return false;
+    }
+  },
+
 }));

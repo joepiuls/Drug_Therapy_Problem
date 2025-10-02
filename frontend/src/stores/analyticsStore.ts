@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-
+import api from  '../../utils/api';
 interface AnalyticsData {
   categoryStats: { category: string; count: number }[];
   severityStats: { severity: string; count: number }[];
@@ -15,7 +15,6 @@ interface AnalyticsState {
   fetchAnalytics: (token: string) => Promise<void>;
 }
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 export const useAnalyticsStore = create<AnalyticsState>((set) => ({
   data: null,
@@ -27,14 +26,14 @@ export const useAnalyticsStore = create<AnalyticsState>((set) => ({
   fetchAnalytics: async (token: string) => {
     set({ loading: true });
     try {
-      const response = await fetch(`${API_URL}/reports/analytics/stats`, {
+      const response = await api.get('reports/analytics/stats', {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
       });
 
-      if (response.ok) {
-        const data = await response.json();
+      if (response.statusText.toLowerCase() === 'ok') {
+        const data = await response.data;
         set({ data, loading: false });
       } else {
         set({ loading: false });

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { User } from '../types';
+import api from '../../utils/api';
 
 interface AuthState {
   user: User | null;
@@ -23,7 +24,6 @@ interface RegisterData {
   registrationNumber: string;
 }
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 export const useAuthStore = create<AuthState>()(
   persist(
@@ -39,17 +39,10 @@ export const useAuthStore = create<AuthState>()(
       login: async (email: string, password: string) => {
         set({ loading: true });
         try {
-          const response = await fetch(`${API_URL}/auth/login`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ email, password }),
-          });
+          const response = await api.post('/auth/login', { email, password });
+          const data = await response.data;
 
-          const data = await response.json();
-
-          if (response.ok) {
+          if (response.statusText.toLowerCase() === 'ok') {
             set({ 
               user: data.user, 
               token: data.token,
@@ -70,18 +63,11 @@ export const useAuthStore = create<AuthState>()(
       register: async (userData: RegisterData) => {
         set({ loading: true });
         try {
-          const response = await fetch(`${API_URL}/auth/register`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(userData),
-          });
-
-          const data = await response.json();
+          const response = await api.post('/auth/register', userData);
+          const data = await response.data;
           set({ loading: false });
 
-          return response.ok;
+          return response.status === 201;
         } catch (error) {
           console.error('Registration error:', error);
           set({ loading: false });
@@ -98,14 +84,14 @@ export const useAuthStore = create<AuthState>()(
         if (!token) return;
 
         try {
-          const response = await fetch(`${API_URL}/auth/me`, {
+          const response = await api.get('/auth/me', {
             headers: {
               'Authorization': `Bearer ${token}`,
             },
           });
 
-          if (response.ok) {
-            const data = await response.json();
+          if (response.statusText.toLowerCase() === 'ok') {
+            const data = await response.data;
             set({ user: data.user });
           } else {
             set({ user: null, token: null });

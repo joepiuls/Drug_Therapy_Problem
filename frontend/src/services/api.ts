@@ -127,6 +127,33 @@ class APIService {
     return reports.filter(report => report.hospitalName === currentUser.hospital);
   }
 
+  markReportAsReviewed(reportId: string, feedback: string): boolean {
+    const reports = this.getReports();
+    const reportIndex = reports.findIndex(r => r.id === reportId);
+    
+    if (reportIndex === -1) return false;
+
+    reports[reportIndex].status = 'reviewed';
+    reports[reportIndex].feedback = feedback;
+    reports[reportIndex].updatedAt = new Date().toISOString();
+
+    localStorage.setItem(this.getStorageKey('reports'), JSON.stringify(reports));
+    return true;
+  }
+
+  markReportAsResolved(reportId: string): boolean {
+    const reports = this.getReports();
+    const reportIndex = reports.findIndex(r => r.id === reportId);
+    
+    if (reportIndex === -1) return false;
+
+    reports[reportIndex].status = 'resolved';
+    reports[reportIndex].updatedAt = new Date().toISOString();
+
+    localStorage.setItem(this.getStorageKey('reports'), JSON.stringify(reports));
+    return true;
+  }
+
   // Analytics
   getCategoryStats(): { category: string; count: number }[] {
     const reports = this.getReports();

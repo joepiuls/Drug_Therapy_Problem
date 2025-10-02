@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { Hospital } from '../types';
+import api from '../../utils/api';
 
 interface HospitalState {
   hospitals: Hospital[];
@@ -9,22 +10,20 @@ interface HospitalState {
   fetchHospitals: () => Promise<void>;
 }
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 export const useHospitalStore = create<HospitalState>((set) => ({
   hospitals: [],
   loading: false,
-
   setHospitals: (hospitals) => set({ hospitals }),
   setLoading: (loading) => set({ loading }),
 
   fetchHospitals: async () => {
     set({ loading: true });
     try {
-      const response = await fetch(`${API_URL}/hospitals`);
-      
-      if (response.ok) {
-        const data = await response.json();
+      const response = await api.get('/hospitals');
+
+      if (response.statusText.toLowerCase() === 'ok') {
+        const data = await response.data;
         set({ hospitals: data.hospitals, loading: false });
       } else {
         set({ loading: false });

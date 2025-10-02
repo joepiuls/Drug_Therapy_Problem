@@ -228,6 +228,13 @@ export const UserGuidePage: React.FC = () => {
                   and comparative hospital performance metrics.
                 </p>
               </div>
+
+              <div className="border rounded-lg p-4">
+                <h3 className="font-medium text-gray-900 mb-2">Nafdac Administrators</h3>
+                <p className="text-gray-600 text-sm mb-2">
+                  Access state-wide adverse drug reaction reports.
+                </p>
+              </div>
             </div>
           </section>
 

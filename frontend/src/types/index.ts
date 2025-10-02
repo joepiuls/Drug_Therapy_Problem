@@ -1,10 +1,10 @@
 export interface User {
-  id: string;
+  _id: string;
   name: string;
   email: string;
   hospital: string;
   registrationNumber?: string;
-  role: 'pharmacist' | 'hospital_admin' | 'state_admin';
+  role: 'pharmacist' | 'hospital_admin' | 'state_admin' | 'nafdac_admin';
   approved: boolean;
   createdAt: string;
 }
@@ -17,7 +17,7 @@ export interface Hospital {
 }
 
 export interface DTPReport {
-  id: string;
+  _id: string;
   pharmacistId: string;
   pharmacistName: string;
   hospitalName: string;
@@ -48,6 +48,7 @@ export interface RegisterData {
   name: string;
   email: string;
   password: string;
+  role: string;
   hospital: string;
   registrationNumber: string;
 }

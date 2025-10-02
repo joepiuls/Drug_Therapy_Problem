@@ -8,13 +8,13 @@ import { Select } from '../components/Select';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { useToast } from '../components/Toast';
 import { Download, BarChart3, TrendingUp, FileText, Guitar as Hospital, AlertTriangle } from 'lucide-react';
+import type { DTPReport } from '../types';
 import { format } from 'date-fns';
 import { dtpCategories, severityLevels, ogunStateHospitals } from '../data/hospitals';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
 import fileDownload from 'js-file-download';
-import { AdminList } from '../components/AdminList';
 
-export const StateAdminDashboard: React.FC = () => {
+export const NafdacAdminDashboard: React.FC = () => {
   const { token } = useAuth();
   const { 
     reports: filteredReports, 
@@ -167,18 +167,6 @@ export const StateAdminDashboard: React.FC = () => {
 
             <div className="bg-white p-6 rounded-lg shadow-sm border">
               <div className="flex items-center">
-                <Hospital className="h-8 w-8 text-secondary-600" />
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Active Hospitals</p>
-                  <p className="text-2xl font-semibold text-gray-900">
-                    {new Set(filteredReports.map(r => r.hospitalName)).size}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white p-6 rounded-lg shadow-sm border">
-              <div className="flex items-center">
                 <AlertTriangle className="h-8 w-8 text-red-600" />
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Severe Cases</p>
@@ -203,10 +191,6 @@ export const StateAdminDashboard: React.FC = () => {
               </div>
             </div>
           </div>
-
-          {/* Admin List */}
-          
-          <AdminList />
 
           {/* Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
