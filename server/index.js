@@ -27,9 +27,7 @@ app.use('/api/', limiter);
 
 // CORS configuration
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production'
-    ? ['https://ogunmedreport.com']
-    : ['http://localhost:3000', 'http://localhost:5173'],
+  origin: 'http://localhost:5173',
   credentials: true
 }));
 
@@ -41,6 +39,7 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 if (process.env.NODE_ENV !== 'production') {
   app.use(morgan('dev'));
 }
+
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -80,59 +79,86 @@ async function initializeData() {
   const Hospital = require('./models/Hospital');
   
   try {
-    // Check if demo users exist
-    const existingUser = await User.findOne({ email: 'pharmacist@demo.com' });
-    if (!existingUser) {
-      const bcrypt = require('bcryptjs');
+    // // Check if demo users exist
+    // const existingUser = await User.findOne({ email: 'pharmacist@demo.com' });
+    // if (!existingUser) {
+    //   const bcrypt = require('bcryptjs');
       
-      // Create demo users
-      const demoUsers = [
-        {
-          name: 'Dr. Adebayo Johnson',
-          email: 'pharmacist@demo.com',
-          password: await bcrypt.hash('demo', 10),
-          hospital: 'Federal Medical Centre, Abeokuta',
-          registrationNumber: 'PCN/2019/12345',
-          role: 'pharmacist',
-          approved: true
-        },
-        {
-          name: 'Mrs. Folake Adeyemi',
-          email: 'admin@demo.com',
-          password: await bcrypt.hash('demo', 10),
-          hospital: 'Federal Medical Centre, Abeokuta',
-          role: 'hospital_admin',
-          approved: true
-        },
-        {
-          name: 'Prof. Olumide Adebisi',
-          email: 'state@demo.com',
-          password: await bcrypt.hash('demo', 10),
-          hospital: 'Ogun State Ministry of Health',
-          role: 'state_admin',
-          approved: true
-        }
-      ];
+    //   // Create demo users
+    //   const demoUsers = [
+    //     {
+    //       name: 'Dr. Adebayo Johnson',
+    //       email: 'pharmacist@demo.com',
+    //       password: await bcrypt.hash('demo', 10),
+    //       hospital: 'Federal Medical Centre, Abeokuta',
+    //       registrationNumber: 'PCN/2019/12345',
+    //       role: 'pharmacist',
+    //       approved: true
+    //     },
+    //     {
+    //       name: 'Mrs. Folake Adeyemi',
+    //       email: 'admin@demo.com',
+    //       password: await bcrypt.hash('demo', 10),
+    //       hospital: 'Federal Medical Centre, Abeokuta',
+    //       role: 'hospital_admin',
+    //       approved: true
+    //     },
+    //     {
+    //       name: 'Prof. Olumide Adebisi',
+    //       email: 'state@demo.com',
+    //       password: await bcrypt.hash('demo', 10),
+    //       hospital: 'Ogun State Ministry of Health',
+    //       role: 'state_admin',
+    //       approved: true
+    //     }
+    //   ];
       
-      await User.insertMany(demoUsers);
-      console.log('Demo users created');
-    }
+    //   await User.insertMany(demoUsers);
+    //   console.log('Demo users created');
+    // }
     
     // Initialize hospitals
     const hospitalCount = await Hospital.countDocuments();
     if (hospitalCount === 0) {
       const hospitals = [
-        { name: 'Federal Medical Centre, Abeokuta', location: 'Abeokuta', type: 'Federal' },
-        { name: 'State Hospital, Abeokuta', location: 'Abeokuta', type: 'State' },
-        { name: 'State Hospital, Ijebu-Ode', location: 'Ijebu-Ode', type: 'State' },
-        { name: 'State Hospital, Sagamu', location: 'Sagamu', type: 'State' },
-        { name: 'General Hospital, Ilaro', location: 'Ilaro', type: 'General' },
-        { name: 'General Hospital, Ota', location: 'Ota', type: 'General' },
-        { name: 'General Hospital, Ikenne', location: 'Ikenne', type: 'General' },
-        { name: 'Babcock University Teaching Hospital', location: 'Ilishan-Remo', type: 'Private' },
-        { name: 'Olabisi Onabanjo University Teaching Hospital', location: 'Sagamu', type: 'Teaching' },
-        { name: 'Neuropsychiatric Hospital, Aro', location: 'Abeokuta', type: 'Specialist' }
-      ];
+        { name: 'State Hospital, Ijaiye', location: 'Ijaiye', type: 'State' },
+        { name: 'Oba Ademola Mart. Hospital', location: 'Abeokuta', type: 'Specialist' },
+        { name: 'General Hospital, Isaga Orile', location: 'Isaga Orile', type: 'General' },
+        { name: 'General Hospital, Odeda', location: 'Odeda', type: 'General' },
+        { name: 'General Hospital, Owode Egba', location: 'Owode Egba', type: 'General' },
+        { name: 'General Hospital, Iberekodo', location: 'Iberekodo', type: 'General' },
+        { name: 'Olikoye Ransome Kuti Mem. Hospital', location: 'Abeokuta', type: 'Specialist' },
+        { name: 'Comm. Psy. Oke Ilewo', location: 'Abeokuta', type: 'Specialist' },
+        { name: 'Dental Centre, Abeokuta', location: 'Abeokuta', type: 'Specialist' },
+        {  name: "Governor's Office Clinic", location: 'Abeokuta', type: 'Specialist' },
+        {  name: 'State Hospital, Ijebu Ode', location: 'Ijebu Ode', type: 'State' },
+        {  name: 'General Hospital, Ijebu Igbo', location: 'Ijebu Igbo', type: 'General' },
+        {  name: 'General Hospital, Ijebu Ife', location: 'Ijebu Ife', type: 'General' },
+        {  name: 'General Hospital, Ibiade', location: 'Ibiade', type: 'General' },
+        {  name: 'General Hospital, Ogbere', location: 'Ogbere', type: 'General' },
+        {  name: 'General Hospital, Ala Idowa', location: 'Ala Idowa', type: 'General' },
+        {  name: 'General Hospital, Odogbolu', location: 'Odogbolu', type: 'General' },
+        {  name: 'General Hospital, Omu Ijebu', location: 'Omu Ijebu', type: 'General' },
+        {  name: 'General Hospital, Atan Ijebu', location: 'Atan Ijebu', type: 'General' },
+        {  name: 'Dental Centre, Ijebu Ode', location: 'Ijebu Ode', type: 'Specialist' },
+        {  name: 'Comm. Psy. Ijebu Ode', location: 'Ijebu Ode', type: 'Specialist' },
+        {  name: 'General Hospital, Iperu', location: 'Iperu', type: 'General' },
+        {  name: 'State Hospital, Isara', location: 'Isara', type: 'State' },
+        {  name: 'General Hospital, Ode Lemo', location: 'Ode Lemo', type: 'General' },
+        {  name: 'General Hospital, Ikenne', location: 'Ikenne', type: 'General' },
+        {  name: 'General Hospital, Ilisan', location: 'Ilisan', type: 'General' },
+        {  name: 'Dental Centre, Sagamu', location: 'Sagamu', type: 'Specialist' },
+        {  name: 'State Hospital, Ota', location: 'Ota', type: 'State' },
+        {  name: 'General Hospital, Ifo', location: 'Ifo', type: 'General' },
+        {  name: 'Comm. Psy. Ota', location: 'Ota', type: 'Specialist' },
+        {  name: 'State Hospital, Ilaro', location: 'Ilaro', type: 'State' },
+        {  name: 'General Hospital, Ayetoro', location: 'Ayetoro', type: 'General' },
+        {  name: 'General Hospital, Imeko', location: 'Imeko', type: 'General' },
+        {  name: 'General Hospital, Idiroko', location: 'Idiroko', type: 'General' },
+        {  name: 'General Hospital, Ipokia', location: 'Ipokia', type: 'General' },
+        {  name: 'Comm. Psy. Ilaro', location: 'Ilaro', type: 'Specialist' },
+];
+
       
       await Hospital.insertMany(hospitals);
       console.log('Hospitals initialized');

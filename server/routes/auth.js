@@ -10,10 +10,10 @@ const router = express.Router();
 // Register
 router.post('/register', async (req, res) => {
   try {
-    const { name, email, password, hospital, registrationNumber } = req.body;
+    const { name, email, password, hospital, role, registrationNumber } = req.body;
 
     // Validation
-    if (!name || !email || !password || !hospital) {
+    if (!name || !email || !password || !hospital || !role) {
       return res.status(400).json({ message: 'Please provide all required fields' });
     }
 
@@ -44,7 +44,7 @@ router.post('/register', async (req, res) => {
       password: hashedPassword,
       hospital,
       registrationNumber,
-      role: 'pharmacist',
+      role: role,
       approved: false
     });
 
@@ -147,5 +147,7 @@ router.get('/me', auth, async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 });
+
+
 
 module.exports = router;

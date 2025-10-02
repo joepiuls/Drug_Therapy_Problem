@@ -1,30 +1,32 @@
 const express = require('express');
 const multer = require('multer');
 const path = require('path');
+const fs = require('fs').promises;
 const DTPReport = require('../models/DTPReport');
 const { auth, requireRole } = require('../middleware/auth');
+const upload = require('../utils/upload'); // should accept (buffer, fileName) and return { url, fileId, thumbnailUrl }
 
 const router = express.Router();
 
-// Configure multer for file uploads
+// Configure multer for file uploads (disk)
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, 'uploads/');
+    cb(null, path.join(__dirname, '..', 'uploads'));
   },
   filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
     cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
   }
 });
 
-const upload = multer({
+const uploads = multer({
   storage,
   limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB limit
-    files: 2 // Max 2 files
+    fileSize: 5 * 1024 * 1024, // 5MB per file
+    files: 2 // max 2 files
   },
   fileFilter: (req, file, cb) => {
-    if (file.mimetype.startsWith('image/')) {
+    if (file.mimetype && file.mimetype.startsWith('image/')) {
       cb(null, true);
     } else {
       cb(new Error('Only image files are allowed'), false);
@@ -33,7 +35,7 @@ const upload = multer({
 });
 
 // Create report
-router.post('/', auth, upload.array('photos', 2), async (req, res) => {
+router.post('/', auth, uploads.array('photos', 2), async (req, res) => {
   try {
     const {
       hospitalName,
@@ -51,13 +53,44 @@ router.post('/', auth, upload.array('photos', 2), async (req, res) => {
       return res.status(400).json({ message: 'Please provide all required fields' });
     }
 
-    // Process uploaded files
-    const photos = req.files ? req.files.map(file => ({
-      filename: file.filename,
-      originalName: file.originalname,
-      mimetype: file.mimetype,
-      size: file.size
-    })) : [];
+    // Map uploaded files (multer saves files to disk)
+    const files = Array.isArray(req.files) ? req.files : [];
+
+    const uploadedPhotos = [];
+    // Upload files to ImageKit (or your upload util) one-by-one
+    for (const file of files) {
+      const localPath = path.resolve(file.path); // full path to local file
+
+      try {
+        // read file into buffer
+        const fileBuffer = await fs.readFile(localPath);
+
+        // call your upload util. It should accept a Buffer or base64 + filename
+        // If your util expects base64 string, convert: fileBuffer.toString('base64')
+        const uploadResult = await upload(fileBuffer, file.originalname);
+
+        // push normalized metadata (guard for missing props)
+        uploadedPhotos.push({
+          url: uploadResult.url || null,
+          thumbnailUrl: uploadResult.thumbnailUrl || uploadResult.thumbnail || null,
+          fileId: uploadResult.fileId || uploadResult.file_id || null,
+          originalName: file.originalname,
+          size: file.size,
+          mimetype: file.mimetype
+        });
+      } catch (fileErr) {
+        console.error(`Failed to upload file ${file.originalname}:`, fileErr);
+        // Optionally push an object describing the failure, or skip it
+        // uploadedPhotos.push({ error: `Failed to upload ${file.originalname}` });
+      } finally {
+        // attempt to delete local file (best-effort)
+        try {
+          await fs.unlink(localPath);
+        } catch (unlinkErr) {
+          console.warn(`Failed to delete local file ${localPath}:`, unlinkErr);
+        }
+      }
+    }
 
     const report = new DTPReport({
       pharmacist: req.user._id,
@@ -70,7 +103,7 @@ router.post('/', auth, upload.array('photos', 2), async (req, res) => {
       severity,
       prescribingDoctor,
       comments,
-      photos
+      photos: uploadedPhotos
     });
 
     await report.save();
@@ -190,6 +223,9 @@ router.patch('/:id', auth, requireRole(['hospital_admin', 'state_admin']), async
     if (req.user.role === 'hospital_admin' && report.hospitalName !== req.user.hospital) {
       return res.status(403).json({ message: 'Access denied' });
     }
+
+    console.log(status);
+    
 
     if (status) report.status = status;
     if (feedback) report.feedback = feedback;

@@ -27,6 +27,7 @@ const AppRoutes: React.FC = () => {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path='/userguide' element={<UserGuidePage />} />
       <Route path="/dashboard" element={
         <ProtectedRoute>
           <DashboardPage />
