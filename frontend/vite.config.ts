@@ -5,12 +5,11 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   plugins: [react()],
   optimizeDeps: {
-    include: ['antd'],
-    exclude: ['lucide-react'],
+    include: ['antd', 'antd/es', 'rc-field-form', 'rc-util'],
+    exclude: [],
   },
-
   ssr: {
-    // ensure antd is included in SSR bundle (useful on Vercel or other server builds)
-    noExternal: ['antd', 'rc-field-form', 'rc-util'] 
+    noExternal: ['antd', 'antd/es', 'rc-field-form', 'rc-util', 'lucide-react']
   }
 });
+
