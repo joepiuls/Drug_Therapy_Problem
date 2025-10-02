@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useReportStore } from '../stores/reportStore';
 import { Button } from '../components/Button';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { Plus, FileText, Clock, CheckCircle, AlertCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import type { DTPReport } from '../types';
 import { format } from 'date-fns';
 
 export const PharmacistDashboard: React.FC = () => {
