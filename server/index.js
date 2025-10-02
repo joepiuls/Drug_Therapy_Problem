@@ -27,7 +27,7 @@ app.use('/api/', limiter);
 
 // CORS configuration
 app.use(cors({
-  origin: 'http://localhost:5173',
+  origin: 'https://www.ogunmedreport.com',
   credentials: true
 }));
 
@@ -78,45 +78,7 @@ async function initializeData() {
   const User = require('./models/User');
   const Hospital = require('./models/Hospital');
   
-  try {
-    // // Check if demo users exist
-    // const existingUser = await User.findOne({ email: 'pharmacist@demo.com' });
-    // if (!existingUser) {
-    //   const bcrypt = require('bcryptjs');
-      
-    //   // Create demo users
-    //   const demoUsers = [
-    //     {
-    //       name: 'Dr. Adebayo Johnson',
-    //       email: 'pharmacist@demo.com',
-    //       password: await bcrypt.hash('demo', 10),
-    //       hospital: 'Federal Medical Centre, Abeokuta',
-    //       registrationNumber: 'PCN/2019/12345',
-    //       role: 'pharmacist',
-    //       approved: true
-    //     },
-    //     {
-    //       name: 'Mrs. Folake Adeyemi',
-    //       email: 'admin@demo.com',
-    //       password: await bcrypt.hash('demo', 10),
-    //       hospital: 'Federal Medical Centre, Abeokuta',
-    //       role: 'hospital_admin',
-    //       approved: true
-    //     },
-    //     {
-    //       name: 'Prof. Olumide Adebisi',
-    //       email: 'state@demo.com',
-    //       password: await bcrypt.hash('demo', 10),
-    //       hospital: 'Ogun State Ministry of Health',
-    //       role: 'state_admin',
-    //       approved: true
-    //     }
-    //   ];
-      
-    //   await User.insertMany(demoUsers);
-    //   console.log('Demo users created');
-    // }
-    
+  try { 
     // Initialize hospitals
     const hospitalCount = await Hospital.countDocuments();
     if (hospitalCount === 0) {
