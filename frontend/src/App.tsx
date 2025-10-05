@@ -8,6 +8,7 @@ import { DashboardPage } from './pages/DashboardPage';
 import { ReportPage } from './pages/ReportPage';
 import { UserGuidePage } from './pages/UserGuidePage';
 import Footer from './components/Footer';
+import ResetPassword from './pages/ResetPassword';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, loading } = useAuth();
@@ -28,6 +29,7 @@ const AppRoutes: React.FC = () => {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path='/userguide' element={<UserGuidePage />} />
+      <Route path='/reset-password' element={<ResetPassword />} />
       <Route path="/dashboard" element={
         <ProtectedRoute>
           <DashboardPage />

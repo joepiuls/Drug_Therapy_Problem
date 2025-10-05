@@ -158,7 +158,7 @@ const RegisterForm: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     ...hospitals.map(h => ({ value: h.name, label: h.name }))
   ];
 
-  const roleOptions = ['Select Role', 'pharmacist' , 'hospital_admin', 'state_admin', 'nafdac_admin'];
+  const roleOptions = ['Select Role', 'pharmacist' , 'hospital_admin', 'nafdac_admin'];
   
 
   const handleSubmit = async (e: React.FormEvent) => {

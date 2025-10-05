@@ -1,19 +1,41 @@
-import React, { useEffect } from "react";
-import { Check, Trash2 } from "lucide-react";
-import { Table, Button, Space, Popconfirm, Tooltip } from "antd";
+import React, { useEffect, useState } from "react";
+import { Check, Trash2, Key } from "lucide-react";
+import { Table, Button, Space, Popconfirm, Tooltip, Modal, message } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import type { User } from "../types";
 import { useUserStore } from "../stores/usersStore";
 import { useAuth } from "../contexts/AuthContext";
 import { LoadingSpinner } from "./LoadingSpinner";
+import ResetPassword from "../pages/ResetPassword"; // adjust path if different
 
 export const UserList: React.FC = () => {
   const { users, loading, fetchUsers, approveUser, deleteUser } = useUserStore();
-  const { token } = useAuth();
+  const { token, user } = useAuth();
+  
+
+  // modal state for password reset
+  const [resetModalVisible, setResetModalVisible] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [confirmLoading, setConfirmLoading] = useState(false);
 
   useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);
+
+  const openResetModal = (id: string) => {
+    setSelectedUserId(id);
+    setResetModalVisible(true);
+  };
+
+  const closeResetModal = () => {
+    setResetModalVisible(false);
+    setSelectedUserId(null);
+  };
+
+  const handleResetSuccess = (msg?: string) => {
+    message.success(msg || "Password reset successful");
+    closeResetModal();
+  };
 
   // AntD columnsType with responsive settings
   const columns: ColumnsType<User> = [
@@ -89,6 +111,32 @@ export const UserList: React.FC = () => {
               </>
             )}
 
+            {/* Reset Password - full button on sm+, icon only on xs */}
+            <div className="hidden sm:block">
+              <Tooltip title="Reset Password">
+                <Button
+                  type="default"
+                  icon={<Key size={16} />}
+                  onClick={() => openResetModal(user._id)}
+                  size="small"
+                >
+                  Reset Password
+                </Button>
+              </Tooltip>
+            </div>
+
+            <div className="block sm:hidden">
+              <Tooltip title="Reset Password">
+                <Button
+                  type="default"
+                  shape="circle"
+                  icon={<Key size={14} />}
+                  onClick={() => openResetModal(user._id)}
+                  size="small"
+                />
+              </Tooltip>
+            </div>
+
             {/* Delete - full button on sm+, icon only on xs */}
             <div className="hidden sm:block">
               <Popconfirm
@@ -135,25 +183,50 @@ export const UserList: React.FC = () => {
   const dataSource = users.map(u => ({ ...u, key: u._id ?? u.email }));
 
   return (
-    <div className="max-w-3xl mx-auto mt-10 p-6 sm:p-8 bg-white rounded-2xl shadow-lg">
-      <h2 className="mb-6 text-center text-2xl font-bold text-gray-800">List of Pharmacy Staffs</h2>
+    <>
+      <div className="max-w-3xl mx-auto mt-10 p-6 sm:p-8 bg-white rounded-2xl shadow-lg">
+        <h2 className="mb-6 text-center text-2xl font-bold text-gray-800">List of Pharmacy Staffs</h2>
 
-      {/* Responsive wrapper: allow horizontal scroll on very small screens */}
-      <div className="w-full overflow-x-auto -mx-6 px-6">
-        {loading ? (
-          <div className="flex justify-center items-center h-40">
-            <LoadingSpinner />
-          </div>
-        ) : (
-          <Table
-            dataSource={dataSource}
-            columns={columns}
-            rowKey="key"
-            pagination={{ pageSize: 5 }}
-            className="min-w-[600px] rounded-lg overflow-hidden"
-          />
-        )}
+        {/* Responsive wrapper: allow horizontal scroll on very small screens */}
+        <div className="w-full overflow-x-auto -mx-6 px-6">
+          {loading ? (
+            <div className="flex justify-center items-center h-40">
+              <LoadingSpinner />
+            </div>
+          ) : (
+            <Table
+              dataSource={dataSource}
+              columns={columns}
+              rowKey="key"
+              pagination={{ pageSize: 5 }}
+              className="min-w-[600px] rounded-lg overflow-hidden"
+            />
+          )}
+        </div>
       </div>
-    </div>
+
+      {/* Password Reset Modal */}
+      <Modal
+        title="Reset user password"
+        visible={resetModalVisible}
+        onCancel={closeResetModal}
+        footer={null}
+        destroyOnClose
+        maskClosable
+      >
+        {selectedUserId ? (
+          <ResetPassword
+            mode="admin"
+            userId={selectedUserId}
+            onSuccess={(msg?: string) => handleResetSuccess(msg)}
+            onClose={closeResetModal}
+          />
+        ) : (
+          <div className="py-8 text-center">No user selected</div>
+        )}
+      </Modal>
+    </>
   );
 };
+
+export default UserList;

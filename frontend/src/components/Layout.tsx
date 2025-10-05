@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { LogOut, Menu, X, Guitar as Hospital, User } from 'lucide-react';
-import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Modal } from 'antd';
+import ResetPassword from '../pages/ResetPassword'; // adjust path if needed
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -10,18 +12,32 @@ interface LayoutProps {
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { user, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [resetModalVisible, setResetModalVisible] = useState(false);
 
-  const roleDisplayNames = {
+  const roleDisplayNames: Record<string, string> = {
     pharmacist: 'Pharmacist',
     hospital_admin: 'Hospital Admin',
     state_admin: 'State Admin',
     nafdac_admin: 'Nafdac Admin'
   };
 
-  const handleLogout = () => {
-    logout();
-    setSidebarOpen(false);
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (err) {
+      // ignore errors from logout and continue to redirect
+      // you may want to show a toast here if you have one
+      // e.g. addToast('Logout failed', 'error');
+    } finally {
+      setSidebarOpen(false);
+      navigate('/login');
+    }
   };
+
+  const openResetModal = () => setResetModalVisible(true);
+  const closeResetModal = () => setResetModalVisible(false);
 
   return (
     <div className="min-h-screen bg-background">
@@ -32,10 +48,11 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
               className="p-2 rounded-md text-gray-600 hover:text-primary-600 hover:bg-gray-100 lg:hidden"
+              aria-label="Toggle menu"
             >
               {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
-            
+
             <div className="flex items-center space-x-2">
               <Hospital className="h-6 w-6 text-primary-600" />
               <div>
@@ -55,12 +72,20 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                 <p className="text-sm font-medium text-gray-900">{user.name}</p>
                 <p className="text-xs text-gray-600">{roleDisplayNames[user.role]}</p>
               </div>
-              
+
               <div className="flex items-center space-x-1">
                 <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center">
                   <User size={16} className="text-primary-600" />
                 </div>
-                
+
+                <button
+                  onClick={openResetModal}
+                  className="p-2 text-gray-600 hover:text-primary-600 hover:bg-gray-100 rounded-md"
+                  title="Reset Password"
+                >
+                  Reset Password
+                </button>
+
                 <button
                   onClick={handleLogout}
                   className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-md"
@@ -76,17 +101,20 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
 
       {/* Mobile Sidebar Overlay */}
       {sidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
           onClick={() => setSidebarOpen(false)}
+          aria-hidden="true"
         />
       )}
 
       {/* Mobile Sidebar */}
-      <div className={`
-        fixed top-0 left-0 h-full w-80 bg-surface shadow-lg transform transition-transform duration-300 ease-in-out z-50 lg:hidden
-        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-      `}>
+      <div
+        className={`fixed top-0 left-0 h-full w-80 bg-surface shadow-lg transform transition-transform duration-300 ease-in-out z-50 lg:hidden
+          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
+        role="navigation"
+        aria-label="Mobile menu"
+      >
         <div className="p-4 border-b border-gray-200">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
@@ -96,6 +124,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             <button
               onClick={() => setSidebarOpen(false)}
               className="p-1 text-gray-600 hover:text-gray-900"
+              aria-label="Close sidebar"
             >
               <X size={20} />
             </button>
@@ -115,13 +144,28 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
               </div>
             </div>
 
-            <button
-              onClick={handleLogout}
-              className="w-full flex items-center space-x-2 text-red-600 hover:bg-red-50 px-3 py-2 rounded-md"
-            >
-              <LogOut size={16} />
-              <span>Logout</span>
-            </button>
+            <div className="space-y-2">
+              <button
+                onClick={() => {
+                  openResetModal();
+                  setSidebarOpen(false);
+                }}
+                className="w-full flex items-center space-x-2 text-gray-700 hover:bg-gray-100 px-3 py-2 rounded-md"
+              >
+                <User size={16} />
+                <span>Reset Password</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  handleLogout();
+                }}
+                className="w-full flex items-center space-x-2 text-red-600 hover:bg-red-50 px-3 py-2 rounded-md"
+              >
+                <LogOut size={16} />
+                <span>Logout</span>
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -130,6 +174,28 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       <main className="min-h-[calc(100vh-64px)]">
         {children}
       </main>
+
+      {/* Reset Password Modal (self mode) */}
+      <Modal
+        title="Change password"
+        visible={resetModalVisible}
+        onCancel={closeResetModal}
+        footer={null}
+        destroyOnClose
+        maskClosable
+      >
+        <ResetPassword
+          mode="self"
+          onSuccess={(msg?: string) => {
+            // optional: show a message via history or a toast; ResetPassword itself uses your toast
+            closeResetModal();
+          }}
+          onClose={closeResetModal}
+          forceLogoutOnSelfChange={true}
+        />
+      </Modal>
     </div>
   );
 };
+
+export default Layout;

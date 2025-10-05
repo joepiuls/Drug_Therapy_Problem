@@ -6,6 +6,8 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 import { Plus, FileText, Clock, CheckCircle, AlertCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
+import { DTPReport } from '@/types';
+import ResetPassword from './ResetPassword';
 
 export const PharmacistDashboard: React.FC = () => {
   const { user, token } = useAuth();
