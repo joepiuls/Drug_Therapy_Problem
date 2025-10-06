@@ -31,6 +31,7 @@ router.post('/register', async (req, res) => {
     const hospitalExists = await Hospital.findOne({ name: hospital });
     if (!hospitalExists) {
       return res.status(400).json({ message: 'Invalid hospital selection' });
+
     }
 
     // Hash password
@@ -45,7 +46,7 @@ router.post('/register', async (req, res) => {
       hospital,
       registrationNumber,
       role: role,
-      approved: false
+      approved:false
     });
 
     await user.save();
@@ -147,6 +148,65 @@ router.get('/me', auth, async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 });
+
+// reset password
+router.patch('/reset-password', auth, async (req, res) => {
+  try {
+    const { currentPassword, newPassword, userId } = req.body;
+
+    // Basic validation
+    if (!newPassword || newPassword.length < 6) {
+      return res.status(400).json({ message: 'New password must be at least 6 characters long' });
+    }
+
+    // If userId provided -> admin trying to reset someone else's password
+    if (userId) {
+      // Only allow privileged roles to reset others' passwords
+      const allowedRoles = ['hospital_admin', 'nafdac_admin', 'state_admin'];
+      if (!allowedRoles.includes(req.user.role)) {
+        return res.status(403).json({ message: 'Unauthorized to reset other users password' });
+      }
+
+      const targetUser = await User.findById(userId);
+      if (!targetUser) {
+        return res.status(404).json({ message: 'Target user not found' });
+      }
+
+      // Hash and set the new password
+      const salt = await bcrypt.genSalt(10);
+      targetUser.password = await bcrypt.hash(newPassword, salt);
+      await targetUser.save();
+
+      return res.json({ message: 'Password reset successfully for target user' });
+    }
+
+    // Otherwise: user changing their own password
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (!currentPassword) {
+      return res.status(400).json({ message: 'Current password is required' });
+    }
+
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ message: 'Current password is incorrect' });
+    }
+
+    // Hash and set new password
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(newPassword, salt);
+    await user.save();
+
+    return res.json({ message: 'Password changed successfully' });
+  } catch (error) {
+    console.error('Reset password error:', error);
+    return res.status(500).json({ message: 'Server error while resetting password' });
+  }
+});
+
 
 
 

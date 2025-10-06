@@ -27,7 +27,8 @@ router.get('/pending', auth, requireRole(['hospital_admin', 'state_admin']), asy
 // Get all hospital admins (State Admin only)
 router.get('/hospital-admins', auth, requireRole(['state_admin']), async (req, res) => {
   try {
-    const users = await User.find({ role: 'hospital_admin' })
+    const query = { role: { $in: ['hospital_admin', 'nafdac_admin'] } };
+    const users = await User.find(query)
       .select('-password')
       .sort({ createdAt: -1 });
 

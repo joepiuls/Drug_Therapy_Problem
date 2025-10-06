@@ -248,7 +248,7 @@ router.patch('/:id', auth, requireRole(['hospital_admin', 'state_admin']), async
 });
 
 // Get analytics data
-router.get('/analytics/stats', auth, requireRole(['hospital_admin', 'state_admin']), async (req, res) => {
+router.get('/analytics/stats', auth, requireRole(['hospital_admin', 'nafdac_admin', 'state_admin']), async (req, res) => {
   try {
     let matchQuery = {};
     
@@ -301,7 +301,8 @@ router.get('/analytics/stats', auth, requireRole(['hospital_admin', 'state_admin
 
     // Hospital stats (for state admin)
     let hospitalStats = [];
-    if (req.user.role === 'state_admin') {
+
+    if (req.user.role === 'state_admin' || req.user.role === 'nafdac_admin') {
       hospitalStats = await DTPReport.aggregate([
         { $group: { _id: '$hospitalName', count: { $sum: 1 } } },
         { $project: { hospital: '$_id', count: 1, _id: 0 } },

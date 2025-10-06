@@ -15,7 +15,7 @@ const hospitalSchema = new mongoose.Schema({
   type: {
     type: String,
     required: true,
-    enum: ['Federal', 'State', 'General', 'Private', 'Teaching', 'Specialist']
+    enum: [ 'State', 'General',  'Specialist']
   },
   active: {
     type: Boolean,
