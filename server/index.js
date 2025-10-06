@@ -28,7 +28,7 @@ const limiter = rateLimit({
 app.use('/api/', limiter);
 
 // CORS configuration — consider making origin configurable
-const allowedOrigin = 'http://localhost:5173';
+const allowedOrigin = process.env.CORS_ORIGIN || 'http://localhost:5173';
 app.use(cors({ origin: allowedOrigin, credentials: true }));
 
 // Body parsing middleware
@@ -122,7 +122,7 @@ async function initializeData() {
 // Start sequence
 async function start() {
   try {
-    await mongoose.connect(process.env.MONGODB_URI, {
+    await mongoose.connect(process.env.MONGO_URI, {
       // optional mongoose options
       useNewUrlParser: true,
       useUnifiedTopology: true
@@ -145,7 +145,7 @@ async function start() {
     }
 
     // Start server after all DB initialization is done
-    const PORT = 5000;
+    const PORT = process.env.PORT || 5000;
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
     });
