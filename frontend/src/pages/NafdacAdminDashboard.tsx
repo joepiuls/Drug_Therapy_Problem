@@ -1,3 +1,4 @@
+// src/pages/NafdacDashboard.tsx
 import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useReportStore } from '../stores/reportStore';
@@ -22,13 +23,9 @@ import {
 import type { DTPReport } from '../types';
 import { dtpCategories, severityLevels, ogunStateHospitals } from '../data/hospitals';
 import { toast } from 'sonner';
+import Lightbox from '../components/Lightbox';
 
-/**
- * NAFDAC-focused dashboard:
- * - Kept: filters, CSV export, concise reports table, category/trend/hospital charts,
- *   severity distribution, and status overview.
- * - Removed: non-essential UI and duplicate metrics.
- */
+/* ... keep top-of-file comments if you want ... */
 
 export const NafdacDashboard: React.FC = () => {
   const { token } = useAuth();
@@ -48,6 +45,11 @@ export const NafdacDashboard: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<'overview' | 'reports' | 'analytics'>('overview');
 
+  // Lightbox state
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxImages, setLightboxImages] = useState<string[]>([]);
+  const [lightboxStartIndex, setLightboxStartIndex] = useState(0);
+
   // Fetch when auth token or filters change
   useEffect(() => {
     if (token) {
@@ -56,6 +58,28 @@ export const NafdacDashboard: React.FC = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, filters]);
+
+  // helper to open lightbox for a report
+  const openImagesForReport = (report: DTPReport, start = 0) => {
+    // normalize possible photo fields (photo objects or URL strings)
+    const images: string[] = (report.photos || [])
+      .map((p: any) => {
+        if (!p) return null;
+        if (typeof p === 'string') return p;
+        // common shapes: { url, thumbnailUrl, secure_url, publicId, fileId }
+        return p.url || p.secure_url || p.thumbnailUrl || p.thumbnail || null;
+      })
+      .filter(Boolean) as string[];
+
+    if (images.length === 0) {
+      toast('No images for this report');
+      return;
+    }
+
+    setLightboxImages(images);
+    setLightboxStartIndex(Math.min(start, Math.max(0, images.length - 1)));
+    setLightboxOpen(true);
+  };
 
   // CSV export - keep fields regulators need; escape quotes
   const handleExportCSV = () => {
@@ -90,7 +114,7 @@ export const NafdacDashboard: React.FC = () => {
         report.severity || '',
         report.status || '',
         `"${prescription}"`,
-        `"${comments}"`
+        `"${comments}"`,
       ].join(',');
     });
 
@@ -147,8 +171,6 @@ export const NafdacDashboard: React.FC = () => {
   // MAIN RENDER
   return (
     <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
-
-
       {/* Header */}
       <div className="mb-6 flex items-start justify-between space-x-4">
         <div>
@@ -249,26 +271,26 @@ export const NafdacDashboard: React.FC = () => {
           </div>
 
           {/* Top Hospitals */}
-        <div className="bg-white p-6 rounded-lg shadow-sm border">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Top Reporting Hospitals</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={getHospitalStats()}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis 
-                dataKey="hospital" 
-                angle={-45}
-                textAnchor="end"
-                height={80}
-                fontSize={12}
-              />
-              <YAxis />
-              <Tooltip />
-              <Bar dataKey="count" fill="#43A047" />
-            </BarChart>
-          </ResponsiveContainer>
+          <div className="bg-white p-6 rounded-lg shadow-sm border">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Top Reporting Hospitals</h3>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={getHospitalStats()}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis
+                  dataKey="hospital"
+                  angle={-45}
+                  textAnchor="end"
+                  height={80}
+                  fontSize={12}
+                />
+                <YAxis />
+                <Tooltip />
+                <Bar dataKey="count" fill="#43A047" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
-      </div>
-    )}
+      )}
 
       {/* REPORTS (detailed list + filters) */}
       {activeTab === 'reports' && (
@@ -384,6 +406,29 @@ export const NafdacDashboard: React.FC = () => {
                         <strong>Comments:</strong> {r.comments}
                       </div>
                     )}
+
+                    {/* PHOTOS: thumbnails + click to open lightbox */}
+                    {Array.isArray(r.photos) && r.photos.length > 0 && (
+                      <div className="mt-3">
+                        <div className="flex gap-2">
+                          {r.photos.map((p: any, i: number) => {
+                            const url = typeof p === 'string' ? p : (p.thumbnailUrl || p.url || p.secure_url || p.thumbnail);
+                            if (!url) return null;
+                            return (
+                              <button
+                                key={i}
+                                onClick={() => openImagesForReport(r, i)}
+                                className="relative rounded-md overflow-hidden border"
+                                title="View image"
+                                aria-label={`Open image ${i + 1}`}
+                              >
+                                <img src={url} alt={`report-${r._id}-img-${i}`} className="h-20 w-28 object-cover" />
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -432,6 +477,14 @@ export const NafdacDashboard: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Lightbox (reusable component) */}
+      <Lightbox
+        images={lightboxImages}
+        startIndex={lightboxStartIndex}
+        open={lightboxOpen}
+        onClose={() => setLightboxOpen(false)}
+      />
     </div>
   );
 };

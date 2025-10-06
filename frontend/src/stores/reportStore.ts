@@ -29,6 +29,8 @@ interface ReportState {
   updateReport: (reportId: string, updates: any, token: string) => Promise<boolean>;
 }
 
+let currentController: AbortController | null = null;
+
 
 
 export const useReportStore = create<ReportState>((set, get) => ({
@@ -46,44 +48,87 @@ export const useReportStore = create<ReportState>((set, get) => ({
   setFilters: (filters) => set({ filters }),
   setPagination: (pagination) => set({ pagination }),
 
-  fetchReports: async (token: string) => {
-    set({ loading: true });
-    try {
-      const { filters, pagination } = get();
-      const queryParams = new URLSearchParams();
-      
-      Object.entries(filters).forEach(([key, value]) => {
-        if (value) queryParams.append(key, value);
-      });
-      
-      queryParams.append('page', pagination.current.toString());
+  // inside your reportStore.ts (Zustand style)
 
-      const response = await api.get(`/reports?${queryParams.toString()}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
 
-      if (response.status === 200 || response.status === 201) {
-        const data = await response.data;
+fetchReports: async (token: string) => {
+  // defensive: don't start without a token
+  if (!token) {
+    console.debug('fetchReports: missing token, skipping');
+    return;
+  }
 
-        set({ 
-          reports: data.reports,
-          pagination: data.pagination,
-          loading: false 
-        });
-      } else {
-        set({ loading: false });
+  set({ loading: true });
+
+  // abort any previous in-flight request
+  if (currentController) {
+    try { currentController.abort(); } catch (_) { /* ignore */ }
+    currentController = null;
+  }
+  currentController = new AbortController();
+  const signal = currentController.signal;
+
+  try {
+    const { filters = {}, pagination = {} } = get() as any;
+
+    // Defensive defaults
+    const page = (pagination && typeof pagination.current === 'number') ? pagination.current : 1;
+    const limit = (pagination && typeof pagination.limit === 'number') ? pagination.limit : 10;
+
+    const queryParams = new URLSearchParams();
+    // append filters only if truthy
+    Object.entries(filters || {}).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        queryParams.append(key, String(value));
       }
-    } catch (error) {
-      console.error('Fetch reports error:', error);
-      set({ loading: false });
+    });
+
+    queryParams.append('page', String(page));
+    queryParams.append('limit', String(limit));
+
+    // use your axios instance (named `api`) and pass the abort signal
+    const response = await api.get(`/reports?${queryParams.toString()}`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      },
+      // axios v0.22+ supports AbortController `signal`
+      signal
+    });
+
+    // normalize the data shape
+    const data = response?.data ?? {};
+    const reports = Array.isArray(data.reports) ? data.reports : (Array.isArray(data) ? data : []);
+    const returnedPagination = data.pagination ?? { current: page, limit };
+    console.log(data);
+    
+
+    set({
+      reports,
+      pagination: returnedPagination,
+      loading: false
+    });
+  } catch (err: any) {
+    // Abort vs other errors
+    const isAbort = err?.name === 'CanceledError' || err?.code === 'ERR_CANCELED' || err?.message === 'canceled';
+    if (isAbort) {
+      console.debug('fetchReports aborted');
+    } else {
+      console.error('Fetch reports error:', err);
+      // optionally store error in state: set({ error: err.message || 'Failed to fetch reports' })
     }
-  },
+  } finally {
+    set({ loading: false });
+    // clear controller reference
+    currentController = null;
+  }
+},
+
 
  submitReport: async (reportData: any, token: string) => {
   try {
     const formData = new FormData();
+
+    
 
     Object.entries(reportData).forEach(([key, value]) => {
       if (key === "photos" && Array.isArray(value)) {
@@ -93,9 +138,11 @@ export const useReportStore = create<ReportState>((set, get) => ({
       }
     });
 
+
     const response = await api.post("/reports", formData, {
       headers: {
         Authorization: `Bearer ${token}`,
+        "Content-Type": "multipart/form-data",
       },
     });
     const data = await response.data;

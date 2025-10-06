@@ -9,6 +9,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { format } from 'date-fns';
 import Lightbox from '../components/Lightbox'; // adjust path if needed
 
+
 export const PharmacistDashboard: React.FC = () => {
   const { user, token } = useAuth();
 

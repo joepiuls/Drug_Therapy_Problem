@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+// src/pages/StateAdminDashboard.tsx
+import React, { useEffect,  useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useReportStore } from '../stores/reportStore';
 import { useAnalyticsStore } from '../stores/analyticsStore';
@@ -13,11 +14,13 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import fileDownload from 'js-file-download';
 import { AdminList } from '../components/AdminList';
 import { toast } from 'sonner';
+import Lightbox from '../components/Lightbox';
+import type { DTPReport } from '../types';
 
 export const StateAdminDashboard: React.FC = () => {
   const { token } = useAuth();
   const { 
-    reports: filteredReports, 
+    reports: filteredReports = [], 
     loading, 
     filters, 
     setFilters, 
@@ -28,16 +31,28 @@ export const StateAdminDashboard: React.FC = () => {
     loading: analyticsLoading, 
     fetchAnalytics 
   } = useAnalyticsStore();
+
   const [activeTab, setActiveTab] = useState<'overview' | 'reports' | 'analytics'>('overview');
+
+  // Lightbox state
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxImages, setLightboxImages] = useState<string[]>([]);
+  const [lightboxStartIndex, setLightboxStartIndex] = useState(0);
 
   useEffect(() => {
     if (token) {
       fetchReports(token);
       fetchAnalytics(token);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, filters]);
 
   const handleExportCSV = () => {
+    if (!filteredReports || filteredReports.length === 0) {
+      toast.error('No data to export');
+      return;
+    }
+
     const headers = [
       'Date',
       'Hospital',
@@ -58,7 +73,7 @@ export const StateAdminDashboard: React.FC = () => {
       report.dtpCategory + (report.customCategory ? ` - ${report.customCategory}` : ''),
       report.severity,
       report.status,
-      `"${report.prescriptionDetails.replace(/"/g, '""')}"`,
+      `"${(report.prescriptionDetails || '').replace(/"/g, '""')}"`,
       `"${(report.comments || '').replace(/"/g, '""')}"`
     ]);
 
@@ -67,22 +82,34 @@ export const StateAdminDashboard: React.FC = () => {
     toast.success('Report exported successfully!');
   };
 
-  const getCategoryStats = () => {
-    return analyticsData?.categoryStats || [];
-  };
+  const getCategoryStats = () => analyticsData?.categoryStats || [];
+  const getTrendData = () => analyticsData?.trendStats?.map((stat: any) => ({
+    month: format(new Date(stat.date), 'MMM yyyy'),
+    count: stat.count
+  })) || [];
+  const getHospitalStats = () => analyticsData?.hospitalStats?.map((stat: any) => ({
+    hospital: stat.hospital.length > 30 ? stat.hospital.substring(0, 30) + '...' : stat.hospital,
+    count: stat.count
+  })) || [];
 
-  const getTrendData = () => {
-    return analyticsData?.trendStats.map(stat => ({
-      month: format(new Date(stat.date), 'MMM yyyy'),
-      count: stat.count
-    })) || [];
-  };
+  // open lightbox for a report: normalize photo URLs
+  const openImagesForReport = (report: DTPReport, start = 0) => {
+    const images: string[] = (report.photos || [])
+      .map((p: any) => {
+        if (!p) return null;
+        if (typeof p === 'string') return p;
+        return p.url || p.secure_url || p.thumbnailUrl || p.thumbnail || null;
+      })
+      .filter(Boolean) as string[];
 
-  const getHospitalStats = () => {
-    return analyticsData?.hospitalStats.map(stat => ({
-      hospital: stat.hospital.length > 30 ? stat.hospital.substring(0, 30) + '...' : stat.hospital,
-      count: stat.count
-    })) || [];
+    if (!images.length) {
+      toast('No images for this report');
+      return;
+    }
+
+    setLightboxImages(images);
+    setLightboxStartIndex(Math.min(start, images.length - 1));
+    setLightboxOpen(true);
   };
 
   if (loading || analyticsLoading) {
@@ -203,7 +230,6 @@ export const StateAdminDashboard: React.FC = () => {
           </div>
 
           {/* Admin List */}
-          
           <AdminList />
 
           {/* Charts */}
@@ -341,7 +367,7 @@ export const StateAdminDashboard: React.FC = () => {
               </div>
             ) : (
               <div className="divide-y divide-gray-200 max-h-96 overflow-y-auto">
-                {filteredReports.map((report) => (
+                {filteredReports.map((report: any) => (
                   <div key={report._id} className="p-6">
                     <div className="flex items-center justify-between mb-2">
                       <div>
@@ -360,10 +386,32 @@ export const StateAdminDashboard: React.FC = () => {
                         </span>
                       </div>
                     </div>
+
                     <p className="text-sm text-gray-700 mb-2">{report.prescriptionDetails}</p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-gray-500 mb-3">
                       {format(new Date(report.createdAt), 'MMM d, yyyy HH:mm')}
                     </p>
+
+                    {/* Images: thumbnails + open lightbox */}
+                    {Array.isArray(report.photos) && report.photos.length > 0 && (
+                      <div className="mt-2 flex gap-2">
+                        {report.photos.map((p: any, i: number) => {
+                          const url = typeof p === 'string' ? p : (p.thumbnailUrl || p.url || p.secure_url || p.thumbnail);
+                          if (!url) return null;
+                          return (
+                            <button
+                              key={i}
+                              onClick={() => openImagesForReport(report, i)}
+                              className="rounded-md overflow-hidden border"
+                              title="View image"
+                              aria-label={`Open image ${i + 1}`}
+                            >
+                              <img src={url} alt={`report-${report._id}-img-${i}`} className="h-20 w-28 object-cover" />
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -377,64 +425,69 @@ export const StateAdminDashboard: React.FC = () => {
         <div className="space-y-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <div className="bg-white p-6 rounded-lg shadow-sm border">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Severity Distribution</h3>
-              <div className="space-y-3">
-                {severityLevels.map(level => {
-                  const count = filteredReports.filter(r => r.severity === level.value).length;
-                  const percentage = filteredReports.length > 0 ? (count / filteredReports.length) * 100 : 0;
-                  
-                  return (
-                    <div key={level.value}>
-                      <div className="flex justify-between text-sm">
-                        <span className={`font-medium ${level.color}`}>{level.label}</span>
-                        <span className="text-gray-600">{count} ({percentage.toFixed(1)}%)</span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div 
-                          className={`h-2 rounded-full ${
-                            level.value === 'severe' ? 'bg-red-500' :
-                            level.value === 'moderate' ? 'bg-orange-500' : 'bg-yellow-500'
-                          }`}
-                          style={{ width: `${percentage}%` }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">DTP Categories</h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={getCategoryStats()}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis 
+                    dataKey="category" 
+                    angle={-45}
+                    textAnchor="end"
+                    height={80}
+                    fontSize={12}
+                  />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="count" fill="#1E88E5" />
+                </BarChart>
+              </ResponsiveContainer>
             </div>
 
             <div className="bg-white p-6 rounded-lg shadow-sm border">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Status Overview</h3>
-              <div className="space-y-3">
-                {[
-                  { status: 'submitted', label: 'Submitted', color: 'bg-amber-500' },
-                  { status: 'reviewed', label: 'Reviewed', color: 'bg-secondary-500' },
-                  { status: 'resolved', label: 'Resolved', color: 'bg-secondary-600' }
-                ].map(({ status, label, color }) => {
-                  const count = filteredReports.filter(r => r.status === status).length;
-                  const percentage = filteredReports.length > 0 ? (count / filteredReports.length) * 100 : 0;
-                  
-                  return (
-                    <div key={status}>
-                      <div className="flex justify-between text-sm">
-                        <span className="font-medium text-gray-900">{label}</span>
-                        <span className="text-gray-600">{count} ({percentage.toFixed(1)}%)</span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div 
-                          className={`h-2 rounded-full ${color}`}
-                          style={{ width: `${percentage}%` }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Monthly Trends</h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={getTrendData()}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis />
+                  <Tooltip />
+                  <Line type="monotone" dataKey="count" stroke="#43A047" strokeWidth={3} />
+                </LineChart>
+              </ResponsiveContainer>
             </div>
+          </div>
+
+          {/* Top Hospitals */}
+          <div className="bg-white p-6 rounded-lg shadow-sm border">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Top Reporting Hospitals</h3>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={getHospitalStats()}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis 
+                  dataKey="hospital" 
+                  angle={-45}
+                  textAnchor="end"
+                  height={80}
+                  fontSize={12}
+                />
+                <YAxis />
+                <Tooltip />
+                <Bar dataKey="count" fill="#43A047" />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         </div>
       )}
+
+      {/* Lightbox (reusable) */}
+      <Lightbox
+        images={lightboxImages}
+        startIndex={lightboxStartIndex}
+        open={lightboxOpen}
+        onClose={() => setLightboxOpen(false)}
+      />
     </div>
   );
 };
+
+export default StateAdminDashboard;
