@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { useToast } from '../components/Toast';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { Lock, Key, User } from 'lucide-react';
+import { toast } from 'sonner';
+import api from '../../utils/api';
+
 
 export type ResetPasswordMode = 'self' | 'admin';
 
@@ -31,8 +33,7 @@ const ResetPassword: React.FC<ResetPasswordProps> = ({
   onClose,
   forceLogoutOnSelfChange = false
 }) => {
-  const { user, logout } = useAuth();
-  const { addToast, ToastContainer } = useToast();
+  const { token, user, logout } = useAuth();
   const navigate = useNavigate();
 
   // Form state
@@ -65,25 +66,25 @@ const ResetPassword: React.FC<ResetPasswordProps> = ({
 
   const validate = (): boolean => {
     if (!newPassword || !confirmPassword) {
-      addToast('Please fill in the new password fields', 'error');
+      toast.error('Please fill in the new password fields');
       return false;
     }
     if (newPassword.length < 6) {
-      addToast('New password must be at least 6 characters', 'error');
+      toast.error('New password must be at least 6 characters');
       return false;
     }
     if (newPassword !== confirmPassword) {
-      addToast('New password and confirmation do not match', 'error');
+      toast.error('New password and confirmation do not match');
       return false;
     }
     if (adminMode) {
       if (!userId) {
-        addToast('Please provide a target user ID to reset', 'error');
+        toast.error('Please provide a target user ID to reset');
         return false;
       }
     } else {
       if (!currentPassword) {
-        addToast('Please provide your current password', 'error');
+        toast.error('Please provide your current password');
         return false;
       }
     }
@@ -91,86 +92,90 @@ const ResetPassword: React.FC<ResetPasswordProps> = ({
   };
 
   const handleSubmit = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!validate()) return;
+  if (e) e.preventDefault();
+  if (!validate()) return;
 
-    // Confirm admin action (simple safeguard)
+  if (adminMode) {
+    const ok = window.confirm(
+      'Are you sure you want to reset the password for this user? This will notify them.'
+    );
+    if (!ok) return;
+  }
+
+  setLoading(true);
+
+  try {
+    const payload: Record<string, any> = { newPassword };
+
     if (adminMode) {
-      const ok = window.confirm('Are you sure you want to reset the password for this user? This will notify them.');
-      if (!ok) return;
+      // prefer initialUserId prop (if provided) otherwise the user typed one
+      if (initialUserId) payload.userId = initialUserId;
+      else payload.userId = userId;
+    } else {
+      payload.currentPassword = currentPassword;
     }
 
-    setLoading(true);
-    try {
-      const token = localStorage.getItem('token');
-      const payload: any = { newPassword };
-      if (adminMode) payload.userId = userId;
-      else payload.currentPassword = currentPassword;
+    console.debug('Reset password payload:', payload, 'adminMode=', adminMode);
 
-      const res = await fetch('/api/auth/reset-password', {
-        method: 'PATCH',
+    // axios: api.patch(url, data, config)
+    const res = await api.patch(
+      '/auth/reset-password',
+      payload,
+      {
         headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify(payload)
-      });
-
-      const data = await res.json().catch(() => ({}));
-
-      if (!res.ok) {
-        addToast(data?.message || 'Failed to reset password', 'error');
-        setLoading(false);
-        return;
-      }
-
-      addToast(data?.message || (adminMode ? 'User password reset' : 'Password changed successfully'), 'success');
-
-      // Clear form
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
-      // only clear userId if it wasn't passed as prop (i.e., admin used the input)
-      if (!initialUserId) setUserId('');
-
-      // Callback to parent
-      onSuccess?.(data?.message);
-
-      // If admin used the component in a modal, optionally close it
-      if (onClose && adminMode) {
-        onClose();
-      }
-
-      // For self-change: optionally force logout (invalidate session) if requested and logout function exists
-      if (!adminMode && forceLogoutOnSelfChange) {
-        try {
-          // if your useAuth exposes logout, call it — otherwise just redirect to login
-          if (typeof logout === 'function') {
-            await logout();
-          } else {
-            // best-effort: remove token and redirect
-            localStorage.removeItem('token');
-          }
-        } catch (err) {
-          // ignore logout errors, redirect anyway
-        } finally {
-          navigate('/login');
+          Authorization: token ? `Bearer ${token}` : ''
         }
-      } else if (!adminMode) {
-        // redirect back to dashboard after a short delay for good UX
-        setTimeout(() => navigate('/dashboard'), 900);
       }
-    } catch (err) {
-      console.error('Reset password error', err);
-      addToast('Network error — please try again', 'error');
-    } finally {
-      setLoading(false);
+    );
+
+    // success: axios returns here for 2xx
+    const data = res.data;
+    toast.success(data?.message || (adminMode ? 'User password reset' : 'Password changed successfully'));
+
+    // Clear form
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
+    if (!initialUserId) setUserId('');
+
+    onSuccess?.(data?.message);
+
+    if (onClose && adminMode) onClose();
+
+    if (!adminMode && forceLogoutOnSelfChange) {
+      try {
+        if (typeof logout === 'function') {
+          await logout();
+        } else {
+          localStorage.removeItem('token');
+        }
+      } catch (err) {
+        // ignore
+      } finally {
+        navigate('/login');
+      }
+    } else if (!adminMode) {
+      setTimeout(() => navigate('/dashboard'), 900);
     }
-  };
+  } catch (err: any) {
+    console.error('Reset password error', err);
+
+    // Better error message: axios error has response.data with server message
+    const serverMsg = err?.response?.data?.message;
+    if (serverMsg) {
+      toast.error(serverMsg);
+    } else if (err?.message) {
+      toast.error(err.message);
+    } else {
+      toast.error('Network error — please try again');
+    }
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="min-h-full">
-      <ToastContainer />
 
       <div className="w-full max-w-md mx-auto">
         <div className="bg-white py-6 px-6 shadow rounded-lg">

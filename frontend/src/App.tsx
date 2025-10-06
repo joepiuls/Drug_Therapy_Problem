@@ -9,6 +9,7 @@ import { ReportPage } from './pages/ReportPage';
 import { UserGuidePage } from './pages/UserGuidePage';
 import Footer from './components/Footer';
 import ResetPassword from './pages/ResetPassword';
+import { Toaster } from 'sonner';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, loading } = useAuth();
@@ -57,6 +58,7 @@ function App() {
     <AuthProvider>
       <Router>
         <div className="bg-background pt-0 min-h-screen pb-14">
+          <Toaster position='top-right' richColors />
           <AppRoutes />
         </div>
         <Footer />

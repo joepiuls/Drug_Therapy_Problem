@@ -1,14 +1,13 @@
 import React, { useState, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useReportStore } from '../stores/reportStore';
-import { useToast } from '../components/Toast';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { Select } from '../components/Select';
-import { LoadingSpinner } from '../components/LoadingSpinner';
 import { ChevronLeft, ChevronRight, Upload, Camera, AlertTriangle, Send } from 'lucide-react';
 import { dtpCategories, severityLevels } from '../data/hospitals';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
 interface FormData {
   hospitalName: string;
@@ -26,7 +25,6 @@ export const ReportPage: React.FC = () => {
   const { user, token } = useAuth();
 
   const { submitReport } = useReportStore();
-  const { addToast, ToastContainer } = useToast();
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -52,7 +50,7 @@ export const ReportPage: React.FC = () => {
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length + formData.photos.length > 2) {
-      addToast('Maximum 2 photos allowed', 'error');
+      toast.error('Maximum 2 photos allowed');
       return;
     }
     updateFormData('photos', [...formData.photos, ...files]);
@@ -80,7 +78,7 @@ export const ReportPage: React.FC = () => {
 
   const nextStep = () => {
     if (!validateStep(currentStep)) {
-      addToast('Please fill in all required fields', 'error');
+      toast.error('Please fill in all required fields');
       return;
     }
     
@@ -97,7 +95,7 @@ export const ReportPage: React.FC = () => {
 
   const handleSubmit = async () => {
     if (!validateStep(currentStep)) {
-      addToast('Please complete all required fields', 'error');
+      toast.error('Please complete all required fields');
       return;
     }
 
@@ -106,14 +104,14 @@ export const ReportPage: React.FC = () => {
       const success = await submitReport(formData, token!);
 
       if (success) {
-        addToast('DTP report submitted successfully!', 'success');
+        toast.success('DTP report submitted successfully!');
         navigate('/dashboard');
       } else {
-        addToast('Failed to submit report. Please try again.', 'error');
+        toast.error('Failed to submit report. Please try again.');
       }
     } catch (error) {
       console.error('Submission error:', error);
-      addToast('An error occurred. Please try again.', 'error');
+      toast.error('An error occurred. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -131,7 +129,6 @@ export const ReportPage: React.FC = () => {
 
   return (
     <div className="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8">
-      <ToastContainer />
       
       {/* Header */}
       <div className="mb-8">

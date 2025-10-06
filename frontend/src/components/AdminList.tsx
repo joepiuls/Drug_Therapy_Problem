@@ -7,6 +7,7 @@ import { useUserStore } from "../stores/usersStore";
 import { useAuth } from "../contexts/AuthContext";
 import { LoadingSpinner } from "./LoadingSpinner";
 import ResetPassword from "../pages/ResetPassword"; // adjust path if needed
+import { toast } from "sonner";
 
 export const AdminList: React.FC = () => {
   const { users, loading, fetchAdminUsers, approveUser, deleteUser } = useUserStore();
@@ -81,7 +82,10 @@ export const AdminList: React.FC = () => {
                   <Button
                     type="primary"
                     icon={<Check size={16} />}
-                    onClick={() => approveUser(user._id, token || "")}
+                    onClick={() => {
+                      approveUser(user._id, token || "");
+                      toast.success("User approved successfully!");
+                    }}
                     size="small"
                     className="!bg-blue-600 !border-blue-600 !text-white hover:!bg-blue-700"
                   >
@@ -95,7 +99,10 @@ export const AdminList: React.FC = () => {
                       type="primary"
                       shape="circle"
                       icon={<Check size={14} />}
-                      onClick={() => approveUser(user._id, token || "")}
+                      onClick={() => {
+                        approveUser(user._id, token || "");
+                        toast.success("User approved successfully!");
+                      }}
                       size="small"
                       className="!bg-blue-600 !border-blue-600 !text-white hover:!bg-blue-700"
                     />
@@ -134,7 +141,10 @@ export const AdminList: React.FC = () => {
             <div className="hidden sm:block">
               <Popconfirm
                 title="Are you sure to delete this user?"
-                onConfirm={() => deleteUser(user._id, token || "")}
+                onConfirm={() => {
+                  deleteUser(user._id, token || "");
+                  toast.success("User deleted successfully!");
+                }}
                 okText="Yes"
                 cancelText="No"
               >
@@ -153,7 +163,10 @@ export const AdminList: React.FC = () => {
               <Tooltip title="Delete">
                 <Popconfirm
                   title="Confirm delete?"
-                  onConfirm={() => deleteUser(user._id, token || "")}
+                  onConfirm={() => {
+                    deleteUser(user._id, token || "");
+                    toast.success("User deleted successfully!");
+                  }}
                   okText="Yes"
                   cancelText="No"
                 >

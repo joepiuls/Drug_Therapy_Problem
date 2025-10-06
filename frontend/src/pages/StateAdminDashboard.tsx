@@ -6,13 +6,13 @@ import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { Select } from '../components/Select';
 import { LoadingSpinner } from '../components/LoadingSpinner';
-import { useToast } from '../components/Toast';
 import { Download, BarChart3, TrendingUp, FileText, Guitar as Hospital, AlertTriangle } from 'lucide-react';
 import { format } from 'date-fns';
 import { dtpCategories, severityLevels, ogunStateHospitals } from '../data/hospitals';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
 import fileDownload from 'js-file-download';
 import { AdminList } from '../components/AdminList';
+import { toast } from 'sonner';
 
 export const StateAdminDashboard: React.FC = () => {
   const { token } = useAuth();
@@ -28,7 +28,6 @@ export const StateAdminDashboard: React.FC = () => {
     loading: analyticsLoading, 
     fetchAnalytics 
   } = useAnalyticsStore();
-  const { addToast, ToastContainer } = useToast();
   const [activeTab, setActiveTab] = useState<'overview' | 'reports' | 'analytics'>('overview');
 
   useEffect(() => {
@@ -65,7 +64,7 @@ export const StateAdminDashboard: React.FC = () => {
 
     const csv = [headers, ...csvData].map(row => row.join(',')).join('\n');
     fileDownload(csv, `ogun-state-dtp-reports-${format(new Date(), 'yyyy-MM-dd')}.csv`);
-    addToast('Report exported successfully!', 'success');
+    toast.success('Report exported successfully!');
   };
 
   const getCategoryStats = () => {
@@ -96,7 +95,6 @@ export const StateAdminDashboard: React.FC = () => {
 
   return (
     <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
-      <ToastContainer />
       
       {/* Header */}
       <div className="mb-8">

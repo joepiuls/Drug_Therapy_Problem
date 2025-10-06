@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useReportStore } from '../stores/reportStore';
 import { useAnalyticsStore } from '../stores/analyticsStore';
@@ -6,39 +6,64 @@ import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { Select } from '../components/Select';
 import { LoadingSpinner } from '../components/LoadingSpinner';
-import { useToast } from '../components/Toast';
-import { Download, BarChart3, TrendingUp, FileText, Guitar as Hospital, AlertTriangle } from 'lucide-react';
-import type { DTPReport } from '../types';
-import { format } from 'date-fns';
-import { dtpCategories, severityLevels, ogunStateHospitals } from '../data/hospitals';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
 import fileDownload from 'js-file-download';
+import { format } from 'date-fns';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  LineChart,
+  Line
+} from 'recharts';
+import type { DTPReport } from '../types';
+import { dtpCategories, severityLevels, ogunStateHospitals } from '../data/hospitals';
+import { toast } from 'sonner';
 
-export const NafdacAdminDashboard: React.FC = () => {
+/**
+ * NAFDAC-focused dashboard:
+ * - Kept: filters, CSV export, concise reports table, category/trend/hospital charts,
+ *   severity distribution, and status overview.
+ * - Removed: non-essential UI and duplicate metrics.
+ */
+
+export const NafdacDashboard: React.FC = () => {
   const { token } = useAuth();
-  const { 
-    reports: filteredReports, 
-    loading, 
-    filters, 
-    setFilters, 
-    fetchReports 
+  const {
+    reports: filteredReports,
+    loading,
+    filters,
+    setFilters,
+    fetchReports
   } = useReportStore();
-  const { 
-    data: analyticsData, 
-    loading: analyticsLoading, 
-    fetchAnalytics 
+
+  const {
+    data: analyticsData,
+    loading: analyticsLoading,
+    fetchAnalytics
   } = useAnalyticsStore();
-  const { addToast, ToastContainer } = useToast();
+
   const [activeTab, setActiveTab] = useState<'overview' | 'reports' | 'analytics'>('overview');
 
+  // Fetch when auth token or filters change
   useEffect(() => {
     if (token) {
       fetchReports(token);
       fetchAnalytics(token);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, filters]);
 
+  // CSV export - keep fields regulators need; escape quotes
   const handleExportCSV = () => {
+    if (!filteredReports || filteredReports.length === 0) {
+      toast.error('No data to export');
+      return;
+    }
+
     const headers = [
       'Date',
       'Hospital',
@@ -51,33 +76,36 @@ export const NafdacAdminDashboard: React.FC = () => {
       'Comments'
     ];
 
-    const csvData = filteredReports.map(report => [
-      format(new Date(report.createdAt), 'yyyy-MM-dd'),
-      report.hospitalName,
-      report.pharmacistName,
-      report.ward || '-',
-      report.dtpCategory + (report.customCategory ? ` - ${report.customCategory}` : ''),
-      report.severity,
-      report.status,
-      `"${report.prescriptionDetails.replace(/"/g, '""')}"`,
-      `"${(report.comments || '').replace(/"/g, '""')}"`
-    ]);
+    const csvData = filteredReports.map((report: DTPReport) => {
+      const category = report.dtpCategory + (report.customCategory ? ` - ${report.customCategory}` : '');
+      const prescription = (report.prescriptionDetails || '').replace(/"/g, '""');
+      const comments = (report.comments || '').replace(/"/g, '""');
 
-    const csv = [headers, ...csvData].map(row => row.join(',')).join('\n');
-    fileDownload(csv, `ogun-state-dtp-reports-${format(new Date(), 'yyyy-MM-dd')}.csv`);
-    addToast('Report exported successfully!', 'success');
+      return [
+        format(new Date(report.createdAt), 'yyyy-MM-dd HH:mm'),
+        report.hospitalName || '',
+        report.pharmacistName || '',
+        report.ward || '',
+        category,
+        report.severity || '',
+        report.status || '',
+        `"${prescription}"`,
+        `"${comments}"`
+      ].join(',');
+    });
+
+    const csv = [headers.join(','), ...csvData].join('\n');
+    const filename = `nafdac_dtp_reports_${format(new Date(), 'yyyy-MM-dd')}.csv`;
+    fileDownload(csv, filename);
+    toast.success('Exported CSV successfully');
   };
 
-  const getCategoryStats = () => {
-    return analyticsData?.categoryStats || [];
-  };
-
-  const getTrendData = () => {
-    return analyticsData?.trendStats.map(stat => ({
-      month: format(new Date(stat.date), 'MMM yyyy'),
-      count: stat.count
-    })) || [];
-  };
+  // Analytics helpers - defensively return empty arrays
+  const categoryStats = analyticsData?.categoryStats || [];
+  const trendStats = analyticsData?.trendStats?.map((s: any) => ({
+    month: format(new Date(s.date), 'MMM yyyy'),
+    count: s.count
+  })) || [];
 
   const getHospitalStats = () => {
     return analyticsData?.hospitalStats.map(stat => ({
@@ -86,6 +114,28 @@ export const NafdacAdminDashboard: React.FC = () => {
     })) || [];
   };
 
+  // Severity distribution small summary computed from current filtered reports
+  const severitySummary = useMemo(() => {
+    const total = filteredReports.length || 0;
+    return severityLevels.map(level => {
+      const count = filteredReports.filter(r => r.severity === level.value).length;
+      const pct = total > 0 ? (count / total) * 100 : 0;
+      return { ...level, count, pct };
+    });
+  }, [filteredReports]);
+
+  // Status overview computed from filteredReports
+  const statusOverview = useMemo(() => {
+    const total = filteredReports.length || 0;
+    const statuses = ['submitted', 'reviewed', 'resolved'];
+    return statuses.map(s => {
+      const count = filteredReports.filter(r => r.status === s).length;
+      const pct = total > 0 ? (count / total) * 100 : 0;
+      return { status: s, count, pct };
+    });
+  }, [filteredReports]);
+
+  // Loading state
   if (loading || analyticsLoading) {
     return (
       <div className="p-6 flex justify-center">
@@ -94,262 +144,246 @@ export const NafdacAdminDashboard: React.FC = () => {
     );
   }
 
+  // MAIN RENDER
   return (
     <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
-      <ToastContainer />
-      
+
+
       {/* Header */}
-      <div className="mb-8">
-        <div className="sm:flex sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              State Administration Dashboard
-            </h1>
-            <p className="mt-2 text-gray-600">Ogun State Hospital DTP Monitoring</p>
-          </div>
-          
-          <div className="mt-4 sm:mt-0">
-            <Button
-              variant="secondary"
-              icon={Download}
-              onClick={handleExportCSV}
-              disabled={filteredReports.length === 0}
-            >
-              Export Data
-            </Button>
-          </div>
+      <div className="mb-6 flex items-start justify-between space-x-4">
+        <div>
+          <h1 className="text-2xl font-bold">NAFDAC — DTP Surveillance</h1>
+          <p className="text-sm text-gray-600 mt-1">Focused view for regulatory review and action.</p>
         </div>
 
-        {/* Tabs */}
-        <div className="mt-6 border-b border-gray-200">
-          <nav className="-mb-px flex space-x-8">
-            {[
-              { id: 'overview', name: 'Overview', icon: BarChart3 },
-              { id: 'reports', name: 'All Reports', icon: FileText },
-              { id: 'analytics', name: 'Analytics', icon: TrendingUp }
-            ].map(tab => {
-              const Icon = tab.icon;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id as any)}
-                  className={`
-                    flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm
-                    ${activeTab === tab.id
-                      ? 'border-primary-500 text-primary-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    }
-                  `}
-                >
-                  <Icon size={16} />
-                  <span>{tab.name}</span>
-                </button>
-              );
-            })}
-          </nav>
+        <div className="flex items-center gap-3">
+          <Button variant="secondary" onClick={handleExportCSV} disabled={!filteredReports.length}>
+            Export CSV
+          </Button>
         </div>
       </div>
 
-      {/* Overview Tab */}
+      {/* Tabs */}
+      <div className="mb-6 border-b border-gray-200">
+        <nav className="flex gap-4">
+          <button
+            className={`pb-3 text-sm ${activeTab === 'overview' ? 'border-b-2 border-primary-500 text-primary-600' : 'text-gray-600'}`}
+            onClick={() => setActiveTab('overview')}
+          >
+            Overview
+          </button>
+          <button
+            className={`pb-3 text-sm ${activeTab === 'reports' ? 'border-b-2 border-primary-500 text-primary-600' : 'text-gray-600'}`}
+            onClick={() => setActiveTab('reports')}
+          >
+            Reports ({filteredReports.length})
+          </button>
+          <button
+            className={`pb-3 text-sm ${activeTab === 'analytics' ? 'border-b-2 border-primary-500 text-primary-600' : 'text-gray-600'}`}
+            onClick={() => setActiveTab('analytics')}
+          >
+            Analytics
+          </button>
+        </nav>
+      </div>
+
+      {/* OVERVIEW */}
       {activeTab === 'overview' && (
-        <div className="space-y-8">
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="bg-white p-6 rounded-lg shadow-sm border">
-              <div className="flex items-center">
-                <FileText className="h-8 w-8 text-primary-600" />
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Total Reports</p>
-                  <p className="text-2xl font-semibold text-gray-900">{filteredReports.length}</p>
-                </div>
-              </div>
+        <div className="space-y-6">
+          {/* Quick stats */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="bg-white p-4 rounded shadow-sm border">
+              <p className="text-sm text-gray-600">Total Reports</p>
+              <p className="text-2xl font-semibold">{filteredReports.length}</p>
             </div>
 
-            <div className="bg-white p-6 rounded-lg shadow-sm border">
-              <div className="flex items-center">
-                <AlertTriangle className="h-8 w-8 text-red-600" />
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Severe Cases</p>
-                  <p className="text-2xl font-semibold text-gray-900">
-                    {filteredReports.filter(r => r.severity === 'severe').length}
-                  </p>
-                </div>
-              </div>
+            <div className="bg-white p-4 rounded shadow-sm border">
+              <p className="text-sm text-gray-600">Severe Cases</p>
+              <p className="text-2xl font-semibold">
+                {filteredReports.filter(r => r.severity === 'severe').length}
+              </p>
             </div>
 
-            <div className="bg-white p-6 rounded-lg shadow-sm border">
-              <div className="flex items-center">
-                <TrendingUp className="h-8 w-8 text-accent-600" />
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">This Month</p>
-                  <p className="text-2xl font-semibold text-gray-900">
-                    {filteredReports.filter(r => 
-                      new Date(r.createdAt).getMonth() === new Date().getMonth()
-                    ).length}
-                  </p>
-                </div>
-              </div>
+            <div className="bg-white p-4 rounded shadow-sm border">
+              <p className="text-sm text-gray-600">Recent (30 days)</p>
+              <p className="text-2xl font-semibold">
+                {filteredReports.filter(r => {
+                  const days = (Date.now() - new Date(r.createdAt).getTime()) / (1000 * 60 * 60 * 24);
+                  return days <= 30;
+                }).length}
+              </p>
             </div>
           </div>
 
-          {/* Charts */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div className="bg-white p-6 rounded-lg shadow-sm border">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">DTP Categories</h3>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={getCategoryStats()}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis 
-                    dataKey="category" 
-                    angle={-45}
-                    textAnchor="end"
-                    height={80}
-                    fontSize={12}
-                  />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="count" fill="#1E88E5" />
-                </BarChart>
-              </ResponsiveContainer>
+          {/* Charts: Category & Trend */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="bg-white p-4 rounded shadow-sm border">
+              <h3 className="text-lg font-medium mb-3">DTP Category Distribution</h3>
+              <div style={{ height: 300 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={categoryStats}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="category" angle={-40} textAnchor="end" height={70} />
+                    <YAxis />
+                    <Tooltip />
+                    <Bar dataKey="count" fill="#1E88E5" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             </div>
 
-            <div className="bg-white p-6 rounded-lg shadow-sm border">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Monthly Trends</h3>
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={getTrendData()}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis />
-                  <Tooltip />
-                  <Line type="monotone" dataKey="count" stroke="#43A047" strokeWidth={3} />
-                </LineChart>
-              </ResponsiveContainer>
+            <div className="bg-white p-4 rounded shadow-sm border">
+              <h3 className="text-lg font-medium mb-3">Monthly Trend (reports)</h3>
+              <div style={{ height: 300 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={trendStats}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="month" />
+                    <YAxis />
+                    <Tooltip />
+                    <Line type="monotone" dataKey="count" stroke="#43A047" strokeWidth={2} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
             </div>
           </div>
 
           {/* Top Hospitals */}
-          <div className="bg-white p-6 rounded-lg shadow-sm border">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Top Reporting Hospitals</h3>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={getHospitalStats()}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis 
-                  dataKey="hospital" 
-                  angle={-45}
-                  textAnchor="end"
-                  height={80}
-                  fontSize={12}
-                />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="count" fill="#43A047" />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+        <div className="bg-white p-6 rounded-lg shadow-sm border">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Top Reporting Hospitals</h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={getHospitalStats()}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis 
+                dataKey="hospital" 
+                angle={-45}
+                textAnchor="end"
+                height={80}
+                fontSize={12}
+              />
+              <YAxis />
+              <Tooltip />
+              <Bar dataKey="count" fill="#43A047" />
+            </BarChart>
+          </ResponsiveContainer>
         </div>
-      )}
+      </div>
+    )}
 
-      {/* Reports Tab */}
+      {/* REPORTS (detailed list + filters) */}
       {activeTab === 'reports' && (
         <div className="space-y-6">
           {/* Filters */}
-          <div className="bg-white p-6 rounded-lg shadow-sm border">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Filters</h3>
-              <Button
-                variant="outline"
-                onClick={() => setFilters({ hospital: '', category: '', severity: '', dateFrom: '', dateTo: '' })}
-              >
-                Clear All
-              </Button>
-            </div>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-              <Select
-                label="Hospital"
-                value={filters.hospital || ''}
-                onChange={(e) => setFilters({ ...filters, hospital: e.target.value })}
-                options={[
-                  { value: '', label: 'All Hospitals' },
-                  ...ogunStateHospitals.map(h => ({ value: h.name, label: h.name }))
-                ]}
-              />
+          <div className="bg-white p-4 rounded shadow-sm border">
+            <div className="flex flex-col lg:flex-row gap-3 items-end">
+              <div className="flex-1">
+                <Select
+                  label="Hospital"
+                  value={filters.hospital || ''}
+                  onChange={(e) => setFilters({ ...filters, hospital: e.target.value })}
+                  options={[
+                    { value: '', label: 'All Hospitals' },
+                    ...ogunStateHospitals.map(h => ({ value: h.name, label: h.name }))
+                  ]}
+                />
+              </div>
 
-              <Select
-                label="Category"
-                value={filters.category || ''}
-                onChange={(e) => setFilters({ ...filters, category: e.target.value })}
-                options={[
-                  { value: '', label: 'All Categories' },
-                  ...dtpCategories.map(cat => ({ value: cat, label: cat }))
-                ]}
-              />
+              <div className="flex-1">
+                <Select
+                  label="Category"
+                  value={filters.category || ''}
+                  onChange={(e) => setFilters({ ...filters, category: e.target.value })}
+                  options={[
+                    { value: '', label: 'All Categories' },
+                    ...dtpCategories.map(cat => ({ value: cat, label: cat }))
+                  ]}
+                />
+              </div>
 
-              <Select
-                label="Severity"
-                value={filters.severity || ''}
-                onChange={(e) => setFilters({ ...filters, severity: e.target.value })}
-                options={[
-                  { value: '', label: 'All Severities' },
-                  ...severityLevels.map(level => ({ value: level.value, label: level.label }))
-                ]}
-              />
+              <div className="w-40">
+                <Select
+                  label="Severity"
+                  value={filters.severity || ''}
+                  onChange={(e) => setFilters({ ...filters, severity: e.target.value })}
+                  options={[
+                    { value: '', label: 'All' },
+                    ...severityLevels.map(l => ({ value: l.value, label: l.label }))
+                  ]}
+                />
+              </div>
 
-              <Input
-                label="From Date"
-                type="date"
-                value={filters.dateFrom || ''}
-                onChange={(e) => setFilters({ ...filters, dateFrom: e.target.value })}
-              />
+              <div className="w-40">
+                <Input
+                  label="From"
+                  type="date"
+                  value={filters.dateFrom || ''}
+                  onChange={(e) => setFilters({ ...filters, dateFrom: e.target.value })}
+                />
+              </div>
 
-              <Input
-                label="To Date"
-                type="date"
-                value={filters.dateTo || ''}
-                onChange={(e) => setFilters({ ...filters, dateTo: e.target.value })}
-              />
+              <div className="w-40">
+                <Input
+                  label="To"
+                  type="date"
+                  value={filters.dateTo || ''}
+                  onChange={(e) => setFilters({ ...filters, dateTo: e.target.value })}
+                />
+              </div>
+
+              <div>
+                <Button
+                  variant="outline"
+                  onClick={() => setFilters({ hospital: '', category: '', severity: '', dateFrom: '', dateTo: '' })}
+                >
+                  Clear
+                </Button>
+              </div>
             </div>
           </div>
 
           {/* Reports List */}
-          <div className="bg-white shadow-sm rounded-lg">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900">
-                All Reports ({filteredReports.length})
-              </h3>
+          <div className="bg-white rounded shadow-sm border">
+            <div className="px-4 py-3 border-b">
+              <h3 className="text-lg font-medium">Reports ({filteredReports.length})</h3>
             </div>
 
             {filteredReports.length === 0 ? (
               <div className="p-8 text-center">
-                <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No reports found</h3>
-                <p className="text-gray-600">Try adjusting your filters.</p>
+                <p className="text-gray-600">No reports match the selected filters.</p>
               </div>
             ) : (
-              <div className="divide-y divide-gray-200 max-h-96 overflow-y-auto">
-                {filteredReports.map((report) => (
-                  <div key={report._id} className="p-6">
-                    <div className="flex items-center justify-between mb-2">
+              <div className="divide-y max-h-[40vh] overflow-auto">
+                {filteredReports.map((r: DTPReport) => (
+                  <div key={r._id} className="p-4">
+                    <div className="flex justify-between items-start">
                       <div>
-                        <h4 className="font-medium text-gray-900">{report.dtpCategory}</h4>
-                        <p className="text-sm text-gray-600">
-                          {report.hospitalName} • {report.pharmacistName}
-                        </p>
+                        <div className="flex items-baseline space-x-3">
+                          <h4 className="font-semibold text-gray-900">{r.dtpCategory}{r.customCategory ? ` — ${r.customCategory}` : ''}</h4>
+                          <span className="text-xs text-gray-500">{format(new Date(r.createdAt), 'yyyy-MM-dd HH:mm')}</span>
+                        </div>
+                        <p className="text-sm text-gray-700 mt-1">{r.hospitalName} • {r.pharmacistName} {r.ward ? `• ${r.ward}` : ''}</p>
                       </div>
-                      <div className="flex space-x-2">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium
-                          ${report.severity === 'severe' ? 'bg-red-100 text-red-800' :
-                            report.severity === 'moderate' ? 'bg-orange-100 text-orange-800' :
-                            'bg-yellow-100 text-yellow-800'}
-                        `}>
-                          {report.severity}
+
+                      <div className="text-right">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          r.severity === 'severe' ? 'bg-red-100 text-red-800' :
+                          r.severity === 'moderate' ? 'bg-orange-100 text-orange-800' : 'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {r.severity}
                         </span>
+                        <div className="text-xs text-gray-500 mt-2">{r.status}</div>
                       </div>
                     </div>
-                    <p className="text-sm text-gray-700 mb-2">{report.prescriptionDetails}</p>
-                    <p className="text-xs text-gray-500">
-                      {format(new Date(report.createdAt), 'MMM d, yyyy HH:mm')}
-                    </p>
+
+                    <div className="mt-3 text-sm text-gray-700">
+                      <strong>Prescription:</strong> {r.prescriptionDetails || '—'}
+                    </div>
+
+                    {r.comments && (
+                      <div className="mt-2 text-sm text-gray-600">
+                        <strong>Comments:</strong> {r.comments}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -358,64 +392,41 @@ export const NafdacAdminDashboard: React.FC = () => {
         </div>
       )}
 
-      {/* Analytics Tab */}
+      {/* ANALYTICS */}
       {activeTab === 'analytics' && (
-        <div className="space-y-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div className="bg-white p-6 rounded-lg shadow-sm border">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Severity Distribution</h3>
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="bg-white p-4 rounded shadow-sm border">
+              <h3 className="text-lg font-medium mb-3">Severity Distribution</h3>
               <div className="space-y-3">
-                {severityLevels.map(level => {
-                  const count = filteredReports.filter(r => r.severity === level.value).length;
-                  const percentage = filteredReports.length > 0 ? (count / filteredReports.length) * 100 : 0;
-                  
-                  return (
-                    <div key={level.value}>
-                      <div className="flex justify-between text-sm">
-                        <span className={`font-medium ${level.color}`}>{level.label}</span>
-                        <span className="text-gray-600">{count} ({percentage.toFixed(1)}%)</span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div 
-                          className={`h-2 rounded-full ${
-                            level.value === 'severe' ? 'bg-red-500' :
-                            level.value === 'moderate' ? 'bg-orange-500' : 'bg-yellow-500'
-                          }`}
-                          style={{ width: `${percentage}%` }}
-                        />
-                      </div>
+                {severitySummary.map(s => (
+                  <div key={s.value}>
+                    <div className="flex justify-between text-sm">
+                      <span className="font-medium">{s.label}</span>
+                      <span className="text-gray-600">{s.count} ({s.pct.toFixed(1)}%)</span>
                     </div>
-                  );
-                })}
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div className={`h-2 rounded-full ${s.value === 'severe' ? 'bg-red-500' : s.value === 'moderate' ? 'bg-orange-500' : 'bg-yellow-500'}`} style={{ width: `${s.pct}%` }} />
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
 
-            <div className="bg-white p-6 rounded-lg shadow-sm border">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Status Overview</h3>
+            <div className="bg-white p-4 rounded shadow-sm border">
+              <h3 className="text-lg font-medium mb-3">Status Overview</h3>
               <div className="space-y-3">
-                {[
-                  { status: 'submitted', label: 'Submitted', color: 'bg-amber-500' },
-                  { status: 'reviewed', label: 'Reviewed', color: 'bg-secondary-500' },
-                  { status: 'resolved', label: 'Resolved', color: 'bg-secondary-600' }
-                ].map(({ status, label, color }) => {
-                  const count = filteredReports.filter(r => r.status === status).length;
-                  const percentage = filteredReports.length > 0 ? (count / filteredReports.length) * 100 : 0;
-                  
-                  return (
-                    <div key={status}>
-                      <div className="flex justify-between text-sm">
-                        <span className="font-medium text-gray-900">{label}</span>
-                        <span className="text-gray-600">{count} ({percentage.toFixed(1)}%)</span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div 
-                          className={`h-2 rounded-full ${color}`}
-                          style={{ width: `${percentage}%` }}
-                        />
-                      </div>
+                {statusOverview.map(s => (
+                  <div key={s.status}>
+                    <div className="flex justify-between text-sm">
+                      <span className="font-medium capitalize">{s.status}</span>
+                      <span className="text-gray-600">{s.count} ({s.pct.toFixed(1)}%)</span>
                     </div>
-                  );
-                })}
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div className="h-2 rounded-full bg-secondary-500" style={{ width: `${s.pct}%` }} />
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
@@ -424,3 +435,5 @@ export const NafdacAdminDashboard: React.FC = () => {
     </div>
   );
 };
+
+export default NafdacDashboard;

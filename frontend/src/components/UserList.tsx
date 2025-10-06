@@ -7,16 +7,16 @@ import { useUserStore } from "../stores/usersStore";
 import { useAuth } from "../contexts/AuthContext";
 import { LoadingSpinner } from "./LoadingSpinner";
 import ResetPassword from "../pages/ResetPassword"; // adjust path if different
+import { toast } from "sonner";
 
 export const UserList: React.FC = () => {
   const { users, loading, fetchUsers, approveUser, deleteUser } = useUserStore();
-  const { token, user } = useAuth();
+  const { token } = useAuth();
   
 
   // modal state for password reset
   const [resetModalVisible, setResetModalVisible] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
-  const [confirmLoading, setConfirmLoading] = useState(false);
 
   useEffect(() => {
     fetchUsers();
@@ -87,7 +87,10 @@ export const UserList: React.FC = () => {
                   <Button
                     type="primary"
                     icon={<Check size={16} />}
-                    onClick={() => approveUser(user._id, token || "")}
+                    onClick={() => {
+                      approveUser(user._id, token || "");
+                      toast.success("User approved successfully!");
+                    }}
                     size="small"
                     className="!bg-blue-600 !border-blue-600 !text-white hover:!bg-blue-700"
                   >
@@ -102,7 +105,10 @@ export const UserList: React.FC = () => {
                       type="primary"
                       shape="circle"
                       icon={<Check size={14} />}
-                      onClick={() => approveUser(user._id, token || "")}
+                      onClick={() => {
+                        approveUser(user._id, token || "");
+                        toast.success("User approved successfully!");
+                      }}
                       size="small"
                       className="!bg-blue-600 !border-blue-600 !text-white hover:!bg-blue-700"
                     />
@@ -141,7 +147,10 @@ export const UserList: React.FC = () => {
             <div className="hidden sm:block">
               <Popconfirm
                 title="Are you sure to delete this user?"
-                onConfirm={() => deleteUser(user._id, token || "")}
+                onConfirm={() => {
+                  deleteUser(user._id, token || "");
+                  toast.success("User deleted successfully!");
+                }}
                 okText="Yes"
                 cancelText="No"
               >
@@ -160,7 +169,10 @@ export const UserList: React.FC = () => {
               <Tooltip title="Delete">
                 <Popconfirm
                   title="Confirm delete?"
-                  onConfirm={() => deleteUser(user._id, token || "")}
+                  onConfirm={() => {
+                    deleteUser(user._id, token || "");
+                    toast.success("User deleted successfully!");
+                  }}
                   okText="Yes"
                   cancelText="No"
                 >

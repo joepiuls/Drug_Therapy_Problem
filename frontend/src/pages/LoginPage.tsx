@@ -5,13 +5,13 @@ import { useHospitalStore } from '../stores/hospitalStore';
 import { useToast } from '../components/Toast';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
-import { Guitar as Hospital, Mail, Lock, UserPlus } from 'lucide-react';
+import { Mail, Lock, UserPlus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
 export const LoginPage: React.FC = () => {
   const { user, login, loading } = useAuth();
-  const { hospitals, fetchHospitals } = useHospitalStore();
-  const { addToast, ToastContainer } = useToast();
+  const { fetchHospitals } = useHospitalStore();
   const navigate = useNavigate();
   const [showRegister, setShowRegister] = useState(false);
   const [loginForm, setLoginForm] = useState({
@@ -31,23 +31,21 @@ export const LoginPage: React.FC = () => {
     e.preventDefault();
     
     if (!loginForm.email || !loginForm.password) {
-      addToast('Please fill in all fields', 'error');
+      toast.error('Please fill in all fields');
       return;
     }
 
     const success = await login(loginForm.email, loginForm.password);
     if (success) {
-      addToast('Login successful!', 'success');
+      toast.success('Login successful!');
     } else {
-      addToast('Invalid credentials or account not approved', 'error');
+      toast.error('Invalid credentials or account not approved');
     }
   };
 
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-50 to-secondary-50 flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <ToastContainer />
-      
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="flex justify-center">
           <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center">

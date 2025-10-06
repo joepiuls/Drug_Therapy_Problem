@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import type { DTPReport } from '../types';
 import api from '../../utils/api';
-import { data } from 'react-router-dom';
 
 interface ReportState {
   reports: DTPReport[];

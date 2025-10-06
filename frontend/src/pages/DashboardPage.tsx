@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { PharmacistDashboard } from './PharmacistDashboard';
 import { HospitalAdminDashboard } from './HospitalAdminDashboard';
 import { StateAdminDashboard } from './StateAdminDashboard';
-import { NafdacAdminDashboard } from './NafdacAdminDashboard';
+import { NafdacDashboard } from './NafdacAdminDashboard';
 
 export const DashboardPage: React.FC = () => {
   const { user } = useAuth();
@@ -18,7 +18,7 @@ export const DashboardPage: React.FC = () => {
     case 'state_admin':
       return <StateAdminDashboard />;
     case 'nafdac_admin':
-      return <NafdacAdminDashboard />;
+      return <NafdacDashboard />;
     default:
       return <div>Unknown role</div>;
   }
