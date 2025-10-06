@@ -1,41 +1,31 @@
-const express = require('express');
-const multer = require('multer');
-const path = require('path');
-const fs = require('fs').promises;
-const DTPReport = require('../models/DTPReport');
-const { auth, requireRole } = require('../middleware/auth');
-const upload = require('../utils/upload'); // should accept (buffer, fileName) and return { url, fileId, thumbnailUrl }
+// routes/reports.js
+const express = require("express");
+const multer = require("multer");
+const DTPReport = require("../models/DTPReport");
+const { auth } = require("../middleware/auth");
+const upload = require("../utils/upload"); // { upload, deleteFile }
+const {requireRole} = require('../middleware/auth')
 
 const router = express.Router();
 
-// Configure multer for file uploads (disk)
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, path.join(__dirname, '..', 'uploads'));
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
-  }
-});
-
+// Use memory storage - files are available at file.buffer
+const storage = multer.memoryStorage();
 const uploads = multer({
   storage,
   limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB per file
-    files: 2 // max 2 files
+    fileSize: 5 * 1024 * 1024, // 5 MB
+    files: 2
   },
   fileFilter: (req, file, cb) => {
-    if (file.mimetype && file.mimetype.startsWith('image/')) {
+    if (file.mimetype && file.mimetype.startsWith("image/")) {
       cb(null, true);
     } else {
-      cb(new Error('Only image files are allowed'), false);
+      cb(new multer.MulterError("LIMIT_UNEXPECTED_FILE", "Only image files are allowed"));
     }
   }
 });
 
-// Create report
-router.post('/', auth, uploads.array('photos', 2), async (req, res) => {
+router.post("/", auth,  uploads.array("photos", 2), async (req, res) => {
   try {
     const {
       hospitalName,
@@ -48,78 +38,123 @@ router.post('/', auth, uploads.array('photos', 2), async (req, res) => {
       comments
     } = req.body;
 
-    // Validation
+    // Basic validation
     if (!hospitalName || !prescriptionDetails || !dtpCategory || !severity) {
-      return res.status(400).json({ message: 'Please provide all required fields' });
+      return res.status(400).json({ message: "Please provide all required fields" });
     }
 
-    // Map uploaded files (multer saves files to disk)
+    if (!req.user || !req.user._id) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
     const files = Array.isArray(req.files) ? req.files : [];
 
-    const uploadedPhotos = [];
-    // Upload files to ImageKit (or your upload util) one-by-one
-    for (const file of files) {
-      const localPath = path.resolve(file.path); // full path to local file
+    // If there are uploads, upload them to ImageKit in parallel
+    let uploadedPhotos = [];
+    if (files.length > 0) {
+      const uploadsPromises = files.map(f =>
+        // upload(buffer, filename, folder)
+        upload(f.buffer, f.originalname, "/reports")
+      );
 
-      try {
-        // read file into buffer
-        const fileBuffer = await fs.readFile(localPath);
+      const settled = await Promise.allSettled(uploadsPromises);
 
-        // call your upload util. It should accept a Buffer or base64 + filename
-        // If your util expects base64 string, convert: fileBuffer.toString('base64')
-        const uploadResult = await upload(fileBuffer, file.originalname);
+      const successes = [];
+      const failures = [];
 
-        // push normalized metadata (guard for missing props)
-        uploadedPhotos.push({
-          url: uploadResult.url || null,
-          thumbnailUrl: uploadResult.thumbnailUrl || uploadResult.thumbnail || null,
-          fileId: uploadResult.fileId || uploadResult.file_id || null,
-          originalName: file.originalname,
-          size: file.size,
-          mimetype: file.mimetype
-        });
-      } catch (fileErr) {
-        console.error(`Failed to upload file ${file.originalname}:`, fileErr);
-        // Optionally push an object describing the failure, or skip it
-        // uploadedPhotos.push({ error: `Failed to upload ${file.originalname}` });
-      } finally {
-        // attempt to delete local file (best-effort)
-        try {
-          await fs.unlink(localPath);
-        } catch (unlinkErr) {
-          console.warn(`Failed to delete local file ${localPath}:`, unlinkErr);
+      settled.forEach((r, idx) => {
+        if (r.status === "fulfilled" && r.value) {
+          successes.push({ idx, value: r.value });
+        } else {
+          failures.push({ idx, reason: r.status === "rejected" ? r.reason : r });
         }
+      });
+
+      if (failures.length > 0) {
+        // attempt rollback of any succeeded uploads to avoid orphan files
+        await Promise.all(
+          successes.map(s => {
+            const fileId = s.value?.fileId;
+            if (fileId) {
+              return uploadUtil.deleteFile(fileId).catch(err => {
+                console.warn("Rollback delete failed for", fileId, err?.message || err);
+                return false;
+              });
+            }
+            return Promise.resolve(false);
+          })
+        );
+
+        console.error("One or more photo uploads failed:", failures);
+        return res.status(500).json({ message: "Failed to upload one or more photos" });
       }
+
+      // normalize metadata for DB
+      uploadedPhotos = successes.map(s => {
+        const meta = s.value;
+        const f = files[s.idx];
+        return {
+          url: meta.url || null,
+          thumbnailUrl: meta.thumbnailUrl || meta.thumbnail || null,
+          fileId: meta.fileId || null,
+          originalName: f.originalname,
+          size: f.size,
+          mimetype: f.mimetype
+        };
+      });
     }
 
-    const report = new DTPReport({
+    // Create and save report
+    const reportDoc = new DTPReport({
       pharmacist: req.user._id,
       pharmacistName: req.user.name,
       hospitalName: hospitalName || req.user.hospital,
       ward,
       prescriptionDetails,
       dtpCategory,
-      customCategory: dtpCategory === 'Other' ? customCategory : undefined,
+      customCategory: dtpCategory === "Other" ? customCategory : undefined,
       severity,
       prescribingDoctor,
       comments,
       photos: uploadedPhotos
     });
 
-    await report.save();
+    await reportDoc.save();
 
-    res.status(201).json({
-      message: 'DTP report submitted successfully',
-      report: {
-        id: report._id,
-        ...report.toObject()
-      }
-    });
-  } catch (error) {
-    console.error('Create report error:', error);
-    res.status(500).json({ message: 'Server error creating report' });
+    // Return a safe shape
+    const safeReport = {
+      id: reportDoc._id,
+      pharmacist: reportDoc.pharmacist,
+      pharmacistName: reportDoc.pharmacistName,
+      hospitalName: reportDoc.hospitalName,
+      ward: reportDoc.ward,
+      prescriptionDetails: reportDoc.prescriptionDetails,
+      dtpCategory: reportDoc.dtpCategory,
+      customCategory: reportDoc.customCategory,
+      severity: reportDoc.severity,
+      prescribingDoctor: reportDoc.prescribingDoctor,
+      comments: reportDoc.comments,
+      photos: reportDoc.photos,
+      createdAt: reportDoc.createdAt
+    };
+
+    return res.status(201).json({ message: "DTP report submitted successfully", report: safeReport });
+  } catch (err) {
+    console.error("Create report error:", err);
+
+    // Handle Multer errors nicely
+    if (err instanceof multer.MulterError) {
+      let msg = err.message;
+      if (err.code === "LIMIT_FILE_SIZE") msg = "File too large (max 5MB)";
+      if (err.code === "LIMIT_FILE_COUNT") msg = "Too many files (max 2)";
+      if (err.code === "LIMIT_UNEXPECTED_FILE") msg = "Invalid file type";
+      return res.status(400).json({ message: msg });
+    }
+
+    return res.status(500).json({ message: "Server error creating report" });
   }
 });
+
 
 // Get reports (with filtering)
 router.get('/', auth, async (req, res) => {

@@ -55,6 +55,7 @@ const dtpReportSchema = new mongoose.Schema({
     trim: true
   },
   photos: [{
+    url: String,
     filename: String,
     originalName: String,
     mimetype: String,
