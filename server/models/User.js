@@ -22,13 +22,17 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  phone: {
+    type: String,
+    required: true
+  },
   registrationNumber: {
     type: String,
     sparse: true // Allows null values but ensures uniqueness when present
   },
   role: {
     type: String,
-    enum: ['pharmacist', 'hospital_admin', 'nafdac_admin', 'state_admin'],
+    enum: ['pharmacist', 'hospital_admin', 'pharm_tech', 'nafdac_admin', 'state_admin'],
     default: 'pharmacist'
   },
   approved: {

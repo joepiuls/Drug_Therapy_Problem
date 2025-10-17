@@ -14,6 +14,10 @@ const dtpReportSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  pharmacistNo:{
+    type:String,
+    required: true
+  },
   ward: {
     type: String,
     trim: true
@@ -73,6 +77,10 @@ const dtpReportSchema = new mongoose.Schema({
   feedback: {
     type: String,
     trim: true
+  },
+  reporter:{
+    type: mongoose.Schema.ObjectId,
+    ref: 'User'
   },
   reviewedBy: {
     type: mongoose.Schema.Types.ObjectId,

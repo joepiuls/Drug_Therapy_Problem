@@ -19,6 +19,7 @@ const registerAdmin = async () => {
       email: "dps@dtp.com",
       password: hashedPassword,
       hospital: "HQ",
+      phone: "123-456-7890",
       role: "state_admin",
       approved: true
     });

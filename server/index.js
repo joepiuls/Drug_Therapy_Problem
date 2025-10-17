@@ -28,7 +28,7 @@ const limiter = rateLimit({
 app.use('/api/', limiter);
 
 // CORS configuration — consider making origin configurable
-const allowedOrigin = process.env.CORS_ORIGIN || 'http://localhost:5173';
+const allowedOrigin =  'http://localhost:5173';
 app.use(cors({ origin: allowedOrigin, credentials: true }));
 
 // Body parsing middleware

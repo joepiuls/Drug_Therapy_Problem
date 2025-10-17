@@ -108,6 +108,7 @@ router.post("/", auth,  uploads.array("photos", 2), async (req, res) => {
     const reportDoc = new DTPReport({
       pharmacist: req.user._id,
       pharmacistName: req.user.name,
+      pharmacistNo: req.user.phone,
       hospitalName: hospitalName || req.user.hospital,
       ward,
       prescriptionDetails,
@@ -126,6 +127,7 @@ router.post("/", auth,  uploads.array("photos", 2), async (req, res) => {
       id: reportDoc._id,
       pharmacist: reportDoc.pharmacist,
       pharmacistName: reportDoc.pharmacistName,
+      pharmacistNo: reportDoc.pharmacistNo,
       hospitalName: reportDoc.hospitalName,
       ward: reportDoc.ward,
       prescriptionDetails: reportDoc.prescriptionDetails,
@@ -250,6 +252,7 @@ router.patch('/:id', auth, requireRole(['hospital_admin', 'state_admin']), async
     const { status, feedback } = req.body;
     
     const report = await DTPReport.findById(req.params.id);
+    
     if (!report) {
       return res.status(404).json({ message: 'Report not found' });
     }
