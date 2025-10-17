@@ -250,19 +250,18 @@ export const HospitalAdminDashboard: React.FC = () => {
                   <div className="flex items-center justify-between mb-3">
                     <div>
                       <h3 className="text-lg font-medium text-gray-900">{report.dtpCategory}{report.customCategory && ` - ${report.customCategory}`}</h3>
-                      <p className="text-sm text-gray-600">By {report.pharmacistName} • {report.ward ? `${report.ward} • ` : ''}{format(new Date(report.createdAt), 'MMM d, yyyy')}</p>
+              <p className="text-sm text-gray-600">By Pharm.{report.pharmacistName} • {report.ward ? `${report.ward} • ` : ''}{format(new Date(report.createdAt), 'MMM d, yyyy')}</p>
                     </div>
-
                     <div className="flex items-center space-x-2">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${getSeverityColor(report.severity)}`}>{report.severity}</span>
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(report.status)}`}>{report.status}</span>
                     </div>
                   </div>
-
+                  <p className="text-gray-700 mb-3"><strong>Phone Number:</strong> {report.pharmacistNo}</p>
                   <p className="text-gray-700 mb-3"><strong>Prescription:</strong> {report.prescriptionDetails}</p>
 
                   {report.prescribingDoctor && <p className="text-gray-600 text-sm mb-2"><strong>Prescribing Doctor:</strong> {report.prescribingDoctor}</p>}
-                  {report.comments && <p className="text-gray-600 text-sm mb-3"><strong>Comments:</strong> {report.comments}</p>}
+                  {report.comments && <p className="text-gray-600 text-sm mb-3"><strong>Action taken:</strong> {report.comments}</p>}
 
                   {report.feedback && <div className="bg-secondary-50 p-3 rounded-lg mb-3"><p className="text-sm font-medium text-secondary-800 mb-1">Previous Feedback:</p><p className="text-sm text-secondary-700">{report.feedback}</p></div>}
 

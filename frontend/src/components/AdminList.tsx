@@ -6,7 +6,7 @@ import type { User } from "../types";
 import { useUserStore } from "../stores/usersStore";
 import { useAuth } from "../contexts/AuthContext";
 import { LoadingSpinner } from "./LoadingSpinner";
-import ResetPassword from "../pages/ResetPassword"; // adjust path if needed
+import ResetPassword from "../pages/ResetPassword"; 
 import { toast } from "sonner";
 
 export const AdminList: React.FC = () => {
@@ -49,9 +49,9 @@ export const AdminList: React.FC = () => {
       ),
     },
     {
-      title: "Email",
-      dataIndex: "email",
-      key: "email",
+      title: "Phone",
+      dataIndex: "phone",
+      key: "phone",
       responsive: ["sm"],
       render: (text: string) => <span className="text-sm text-gray-600 truncate">{text}</span>,
     },

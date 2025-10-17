@@ -373,7 +373,8 @@ export const StateAdminDashboard: React.FC = () => {
                       <div>
                         <h4 className="font-medium text-gray-900">{report.dtpCategory}</h4>
                         <p className="text-sm text-gray-600">
-                          {report.hospitalName} • {report.pharmacistName}
+                          {report.hospitalName} • {report.pharmacistName} • 
+                          {report.pharmacistLastName} • {report.pharmacistPhone}
                         </p>
                       </div>
                       <div className="flex space-x-2">

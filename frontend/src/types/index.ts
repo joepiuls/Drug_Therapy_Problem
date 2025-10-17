@@ -1,10 +1,12 @@
 export interface User {
   _id: string;
   name: string;
+  lastName: string;
   email: string;
   hospital: string;
+  phone: string;
   registrationNumber?: string;
-  role: 'pharmacist' | 'hospital_admin' | 'state_admin' | 'nafdac_admin';
+  role: 'pharmacist' | 'hospital_admin' | 'state_admin' | 'pharm_tech' | 'nafdac_admin';
   approved: boolean;
   createdAt: string;
 }
@@ -20,6 +22,7 @@ export interface DTPReport {
   _id: string;
   pharmacistId: string;
   pharmacistName: string;
+  pharmacistNo: string;
   hospitalName: string;
   ward?: string;
   prescriptionDetails: string;
@@ -39,7 +42,7 @@ export interface AuthContextType {
   user: User | null;
   token: string | null;
   login: (email: string, password: string) => Promise<boolean>;
-  register: (userData: RegisterData) => Promise<boolean>;
+  register: (userData: RegisterData) => Promise<{success: boolean, message: string}>;
   logout: () => void;
   loading: boolean;
 }
@@ -47,6 +50,7 @@ export interface AuthContextType {
 export interface RegisterData {
   name: string;
   email: string;
+  phone: string;
   password: string;
   role: string;
   hospital: string;

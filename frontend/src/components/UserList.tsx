@@ -51,9 +51,9 @@ export const UserList: React.FC = () => {
       ),
     },
     {
-      title: "Email",
-      dataIndex: "email",
-      key: "email",
+      title: "Phone",
+      dataIndex: "phone",
+      key: "phone",
       // hide on xs screens
       responsive: ["sm"],
       render: (text: string) => <span className="text-sm text-gray-600 truncate">{text}</span>,

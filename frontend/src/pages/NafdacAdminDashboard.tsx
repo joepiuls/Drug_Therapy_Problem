@@ -383,7 +383,8 @@ export const NafdacDashboard: React.FC = () => {
                           <h4 className="font-semibold text-gray-900">{r.dtpCategory}{r.customCategory ? ` — ${r.customCategory}` : ''}</h4>
                           <span className="text-xs text-gray-500">{format(new Date(r.createdAt), 'yyyy-MM-dd HH:mm')}</span>
                         </div>
-                        <p className="text-sm text-gray-700 mt-1">{r.hospitalName} • {r.pharmacistName} {r.ward ? `• ${r.ward}` : ''}</p>
+                        <p className="text-sm text-gray-700 mt-1">{r.hospitalName} • {r.pharmacistName} • 
+                          • {r.pharmacistNo} {r.ward ? `• ${r.ward}` : ''}</p>
                       </div>
 
                       <div className="text-right">

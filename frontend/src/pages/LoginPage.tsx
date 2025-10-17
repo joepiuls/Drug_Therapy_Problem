@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useHospitalStore } from '../stores/hospitalStore';
-import { useToast } from '../components/Toast';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { Mail, Lock, UserPlus } from 'lucide-react';
@@ -140,15 +139,18 @@ const RegisterForm: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const { register, loading } = useAuth();
   const { hospitals } = useHospitalStore();
   const navigate = useNavigate();
-  const { addToast } = useToast();
+
+
   const [form, setForm] = useState({
-    name: '',
+    firstName: '',
+    lastName: '',
     email: '',
     password: '',
     confirmPassword: '',
     hospital: '',
-    role:'',
-    registrationNumber: ''
+    role: '',
+    registrationNumber: '',
+    phone: ''
   });
 
   const hospitalOptions = [
@@ -156,36 +158,57 @@ const RegisterForm: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     ...hospitals.map(h => ({ value: h.name, label: h.name }))
   ];
 
-  const roleOptions = ['Select Role', 'pharmacist' , 'hospital_admin', 'nafdac_admin'];
-  
+  const roleOptions = ['Select Role', 'pharmacist', 'pharm_tech', 'hospital_admin', 'nafdac_admin'];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
+    // ✅ Validate first and last name
+    if (!form.firstName.trim() || !form.lastName.trim()) {
+      toast.error('Please enter both first and last name');
+      return;
+    }
+
+    // ✅ Validate password
     if (form.password !== form.confirmPassword) {
-      addToast('Passwords do not match', 'error');
+      toast.error('Passwords do not match');
       return;
     }
-
     if (form.password.length < 6) {
-      addToast('Password must be at least 6 characters', 'error');
+      toast.error('Password must be at least 6 characters long');
       return;
     }
 
-    const success = await register({
-      name: form.name,
+    // ✅ Validate PCN Registration Number (numeric & ≥6 digits)
+    if (!/^\d{6,}$/.test(form.registrationNumber)) {
+      toast.error('PCN number must be numeric and at least 6 digits');
+      return;
+    }
+
+    // ✅ Validate phone number
+    if (!/^\+?\d{7,15}$/.test(form.phone)) {
+      toast.error('Please enter a valid phone number');
+      return;
+    }
+
+    // // ✅ Combine first + last name before sending
+    const fullName = `${form.firstName.trim()} ${form.lastName.trim()}`;
+
+    const result = await register({
+      name: fullName,
       email: form.email,
       password: form.password,
       role: form.role,
       hospital: form.hospital,
-      registrationNumber: form.registrationNumber
+      registrationNumber: form.registrationNumber,
+      phone: form.phone
     });
 
-    if (success) {
-      addToast('Registration successful! Awaiting admin approval.', 'success');
+    if (result.success) {
+      toast.success('Registration successful! Awaiting admin approval.');
       onBack();
     } else {
-      addToast('Registration failed. Email may already exist.', 'error');
+      toast.error(result.message);
     }
   };
 
@@ -197,13 +220,25 @@ const RegisterForm: React.FC<{ onBack: () => void }> = ({ onBack }) => {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        <Input
-          label="Full Name"
-          value={form.name}
-          onChange={(e) => setForm(prev => ({ ...prev, name: e.target.value }))}
-          placeholder="Pharm. John Doe"
-          required
-        />
+
+        {/* ✅ First and Last Name Fields */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Input
+            label="First Name"
+            value={form.firstName}
+            onChange={(e) => setForm(prev => ({ ...prev, firstName: e.target.value }))}
+            placeholder="John"
+            required
+          />
+
+          <Input
+            label="Last Name"
+            value={form.lastName}
+            onChange={(e) => setForm(prev => ({ ...prev, lastName: e.target.value }))}
+            placeholder="Doe"
+            required
+          />
+        </div>
 
         <Input
           label="Email"
@@ -211,6 +246,15 @@ const RegisterForm: React.FC<{ onBack: () => void }> = ({ onBack }) => {
           value={form.email}
           onChange={(e) => setForm(prev => ({ ...prev, email: e.target.value }))}
           placeholder="john.doe@hospital.gov.ng"
+          required
+        />
+
+        <Input
+          label="Phone Number"
+          type="tel"
+          value={form.phone}
+          onChange={(e) => setForm(prev => ({ ...prev, phone: e.target.value }))}
+          placeholder="+2348012345678"
           required
         />
 
@@ -240,7 +284,7 @@ const RegisterForm: React.FC<{ onBack: () => void }> = ({ onBack }) => {
           onChange={(e) => setForm(prev => ({ ...prev, role: e.target.value }))}
           required
         >
-            {roleOptions.map((option, index) => (
+          {roleOptions.map((option, index) => (
             <option
               key={index}
               value={index === 0 ? '' : option}
@@ -248,7 +292,7 @@ const RegisterForm: React.FC<{ onBack: () => void }> = ({ onBack }) => {
             >
               {option}
             </option>
-            ))}
+          ))}
         </select>
 
         <select
@@ -263,38 +307,24 @@ const RegisterForm: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         </select>
 
         <Input
-          label="Pharmacist Registration Number"
+          label="Pharmacist Registration Number (PCN)"
           value={form.registrationNumber}
           onChange={(e) => setForm(prev => ({ ...prev, registrationNumber: e.target.value }))}
-          placeholder="PCN/2019/12345"
-          helperText="Your PCN registration number"
+          placeholder="e.g. 123456"
+          helperText="Must be numeric and at least 6 digits"
           required
         />
 
         <div className="flex space-x-3 pt-4">
-          <Button
-            type="button"
-            variant="outline"
-            fullWidth
-            onClick={onBack}
-          >
+          <Button type="button" variant="outline" fullWidth onClick={onBack}>
             Back
           </Button>
-          
-          <Button
-            type="button"
-            variant="outline"
-            fullWidth
-            onClick={() => navigate('/userguide')}
-          >
+
+          <Button type="button" variant="outline" fullWidth onClick={() => navigate('/userguide')}>
             User Guide
           </Button>
-          <Button
-            type="submit"
-            loading={loading}
-            fullWidth
-            icon={UserPlus}
-          >
+
+          <Button type="submit" loading={loading} fullWidth icon={UserPlus}>
             Register
           </Button>
         </div>

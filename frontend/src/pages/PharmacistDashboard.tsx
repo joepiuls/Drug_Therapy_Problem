@@ -48,7 +48,7 @@ export const PharmacistDashboard: React.FC = () => {
   const extractImagesFromReport = (report: any): Array<string | { url?: string }> => {
     if (!report) return [];
     // possible fields: photos, images, attachments, media
-    const candidates = report.photos ?? report.images ?? report.attachments ?? report.media ?? [];
+    const candidates = report.photos;
     if (!Array.isArray(candidates)) return [];
     return candidates
       .map((p: any) => {
@@ -56,7 +56,7 @@ export const PharmacistDashboard: React.FC = () => {
         if (typeof p === 'string') return p;
         if (typeof p === 'object') {
           // common shapes: { url }, { path }, { src }
-          return p.url ?? p.path ?? p.src ?? null;
+          return p.url;
         }
         return null;
       })
@@ -221,7 +221,7 @@ export const PharmacistDashboard: React.FC = () => {
 
                   <p className="text-gray-700 mb-3 line-clamp-2">{report.prescriptionDetails}</p>
 
-                  {report.comments && <p className="text-gray-600 text-sm mb-3"><strong>Comments:</strong> {report.comments}</p>}
+                  {report.comments && <p className="text-gray-600 text-sm mb-3"><strong>Action taken:</strong> {report.comments}</p>}
 
                   {/* Thumbnails */}
                   {images.length > 0 && (
