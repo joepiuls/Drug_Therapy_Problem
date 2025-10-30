@@ -11,7 +11,9 @@ export const DashboardPage: React.FC = () => {
   if (!user) return null;
 
   switch (user.role) {
-    case 'pharmacist' || 'pharm_tech':
+    case 'pharmacist':
+      return <PharmacistDashboard />;
+      case 'pharm_tech':
       return <PharmacistDashboard />;
     case 'hospital_admin':
       return <HospitalAdminDashboard />;
