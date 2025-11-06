@@ -34,11 +34,11 @@ export const LoginPage: React.FC = () => {
       return;
     }
 
-    const success = await login(loginForm.email, loginForm.password);
-    if (success) {
+    const result = await login(loginForm.email, loginForm.password);
+    if (result.success) {
       toast.success('Login successful!');
     } else {
-      toast.error('Invalid credentials or account not approved');
+      toast.error(result.message || 'Invalid credentials or account not approved');
     }
   };
 

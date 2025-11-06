@@ -41,7 +41,7 @@ export interface DTPReport {
 export interface AuthContextType {
   user: User | null;
   token: string | null;
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (email: string, password: string) => Promise<{success: boolean, message?: string}>;
   register: (userData: RegisterData) => Promise<{success: boolean, message: string}>;
   logout: () => void;
   loading: boolean;

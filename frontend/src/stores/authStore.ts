@@ -10,15 +10,14 @@ interface AuthState {
   setUser: (user: User | null) => void;
   setToken: (token: string | null) => void;
   setLoading: (loading: boolean) => void;
-  login: (email: string, password: string) => Promise<boolean>;
-  register: (userData: RegisterData) => Promise<{}>;
+  login: (email: string, password: string) => Promise<{ success: boolean; message?: string }>;
+  register: (userData: RegisterData) => Promise<{success: boolean; message: string}>;
   logout: () => void;
   checkAuth: () => Promise<void>;
 }
 
 interface RegisterData {
   name: string;
-  lastname: string;
   email: string;
   phone: string;
   role: string;
@@ -39,86 +38,54 @@ export const useAuthStore = create<AuthState>()(
       setToken: (token) => set({ token }),
       setLoading: (loading) => set({ loading }),
 
-      login: async (email: string, password: string) => {
+      login: async (email, password) => {
         set({ loading: true });
         try {
-          const response = await api.post('/auth/login', { email, password });
-          const data = await response.data;
-
-          if (response.statusText.toLowerCase() === 'ok') {
-            set({ 
-              user: data.user, 
-              token: data.token,
-              loading: false 
-            });
-            return true;
-          } else {
-            set({ loading: false });
-            return false;
-          }
-        } catch (error) {
-          console.error('Login error:', error);
+          const { data } = await api.post<{ user: User; token: string }>('/auth/login', { email, password });
+          set({ user: data.user, token: data.token, loading: false });
+          return { success: true };
+        } catch (err: any) {
+          const message = err.response?.data?.message ?? 'Login failed';
           set({ loading: false });
-          return false;
+          return { success: false, message };
         }
       },
 
-      register: async (userData: RegisterData) => {
-      set({ loading: true });
-      try {
-        const response = await api.post('/auth/register', userData);
-        set({ loading: false });
+      register: async (userData) => {
+        set({ loading: true });
+        try {
+          const { data } = await api.post<{ message?: string }>('/auth/register', userData);
+          set({ loading: false });
+          return { success: true, message: data.message ?? 'Registered!' };
+        } catch (err: any) {
+          set({ loading: false });
+          return { success: false, message: err.response?.data?.message ?? 'Registration failed' };
+        }
+      },
 
-        // ✅ Return both success and backend message
-        return {
-          success: true,
-          message: response.data.message || 'Registration successful!',
-        };
-      } catch (error: any) {
-        console.error('Registration error:', error);
-        set({ loading: false });
+      logout: () => {
+        set({ user: null, token: null });
+        delete api.defaults.headers.common['Authorization'];
+      },
 
-        // ✅ Capture backend error message (400, 409, etc.)
-        const message =
-          error.response?.data?.message ||
-          'Registration failed. Please try again.';
+      checkAuth: async () => {
+        const { token } = get();
+        if (!token) return;
 
-        return { success: false, message };
-      }
-},
-          logout: () => {
-            set({ user: null, token: null });
-          },
-
-          checkAuth: async () => {
-            const { token } = get();
-            if (!token) return;
-
-            try {
-              const response = await api.get('/auth/me', {
-                headers: {
-                  'Authorization': `Bearer ${token}`,
-                },
-              });
-
-              if (response.statusText.toLowerCase() === 'ok') {
-                const data = await response.data;
-                set({ user: data.user });
-              } else {
-                set({ user: null, token: null });
-              }
-            } catch (error) {
-              console.error('Auth check error:', error);
-              set({ user: null, token: null });
-            }
-          },
+        try {
+          const { data } = await api.get<{ user: User }>('/auth/me', {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          set({ user: data.user });
+        } catch {
+          set({ user: null, token: null });
+          delete api.defaults.headers.common['Authorization'];
+        }
+      },
     }),
     {
       name: 'auth-storage',
-      partialize: (state) => ({ 
-        token: state.token,
-        user: state.user 
-      }),
+      partialize: (state) => ({ token: state.token, user: state.user }),
     }
   )
 );
