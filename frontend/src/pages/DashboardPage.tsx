@@ -13,6 +13,8 @@ export const DashboardPage: React.FC = () => {
   switch (user.role) {
     case 'pharmacist':
       return <PharmacistDashboard />;
+      case 'pharm_tech':
+      return <PharmacistDashboard />;
     case 'hospital_admin':
       return <HospitalAdminDashboard />;
     case 'state_admin':
