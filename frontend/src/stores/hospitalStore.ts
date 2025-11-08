@@ -1,4 +1,4 @@
-import { create } from 'zustand';
+rtrt { create } from 'zustand';
 import type { Hospital } from '../types';
 import api from '../../utils/api';
 
@@ -22,7 +22,7 @@ export const useHospitalStore = create<HospitalState>((set) => ({
     try {
       const response = await api.get('/hospitals');
 
-      if (response.statusText.toLowerCase() === 'ok') {
+      if (response.status===200) {
         const data = await response.data;
         set({ hospitals: data.hospitals, loading: false });
       } else {
