@@ -1,4 +1,4 @@
-rtrt { create } from 'zustand';
+import { create } from 'zustand';
 import type { Hospital } from '../types';
 import api from '../../utils/api';
 
