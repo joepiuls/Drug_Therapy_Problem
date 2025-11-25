@@ -141,8 +141,7 @@ fetchReports: async (token: string) => {
 
     const response = await api.post("/reports", formData, {
       headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "multipart/form-data",
+        Authorization: `Bearer ${token}`
       },
     });
     const data = await response.data;
